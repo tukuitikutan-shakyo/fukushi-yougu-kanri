@@ -1575,36 +1575,75 @@ async function saveStock() {
 
   try {
 
-    // 変更された物品を順番に送信
-    for (const change of changes) {
+    // 複数物品を1回のPOSTで送信
+const payload = {
+  action: "adjustInventory",
+  branchId: currentBranchId,
+  changes: changes,
+  note: document.getElementById("stockNote").value.trim()
+};
 
-      const payload = {
-        action: "adjustInventory",
-        branchId: currentBranchId,
-        itemId: change.itemId,
-        newTotal: change.newTotal,
-        note: document.getElementById("stockNote").value.trim()
-      };
+await fetch(API_URL, {
+  method: "POST",
+  mode: "no-cors",
+  headers: {
+    "Content-Type": "text/plain;charset=UTF-8"
+  },
+  body: JSON.stringify(payload)
+});
 
-      await fetch(API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: {
-          "Content-Type": "text/plain;charset=UTF-8"
-        },
-        body: JSON.stringify(payload)
-      });
+button.textContent = "保存結果を確認中...";
 
+// 保存後に最新データを取得して照合
+callApi(
+  {
+    action: "inventory",
+    branchId: currentBranchId
+  },
+  data => {
+
+    button.disabled = false;
+    button.textContent = "確認しました";
+
+    if (!data || data.success !== true) {
+      showError("保存後の在庫確認に失敗しました。再読み込みしてください。");
+      return;
+    }
+
+    const allSaved = changes.every(change => {
+
+      const savedItem = data.inventory.find(
+        item => item.itemId === change.itemId
+      );
+
+      return savedItem &&
+        savedItem.total === change.newTotal;
+
+    });
+
+    if (!allSaved) {
+      showError(
+        "入力した在庫数と保存後の在庫数が一致しません。再確認してください。"
+      );
+      return;
     }
 
     closeStockConfirm();
 
-    showToast(
-      "保存リクエストを送信しました。在庫を再取得します。"
+    renderInventory(data);
+
+    setConnection("接続中");
+
+    showStatus(
+      data.branchName + "の在庫数を保存・確認しました。"
     );
 
-    // 最新の在庫データを再取得
-    loadInventory(currentBranchId);
+    showToast("在庫数を保存しました。");
+
+    document.getElementById("stockNote").value = "";
+
+  }
+);
 
   } catch (error) {
 
