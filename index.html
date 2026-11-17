@@ -348,6 +348,130 @@
   color: var(--danger);
 }
 
+
+/* 在庫変更確認モーダル */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(20, 35, 48, .45);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.16);
+}
+
+.modal h2 {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+
+.modal-description {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 18px;
+}
+
+.change-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.change-table th,
+.change-table td {
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.change-table th {
+  color: var(--muted);
+  background: #f8fafb;
+  font-weight: 600;
+}
+
+.change-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.change-positive {
+  color: var(--success);
+}
+
+.change-negative {
+  color: var(--danger);
+}
+
+.modal-note {
+  margin-top: 18px;
+  padding: 12px;
+  background: #f5f7f9;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.modal-button {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-button.primary {
+  background: var(--brand);
+  color: white;
+  border-color: var(--brand);
+}
+
+.modal-button:hover {
+  opacity: .88;
+}
+
+@media (max-width: 500px) {
+  .modal {
+    padding: 18px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-button {
+    width: 100%;
+  }
+}
+
     .unit {
       color: var(--muted);
       font-size: 11px;
@@ -698,13 +822,13 @@
 
       <div style="margin-top:20px; text-align:right;">
         <button
-          id="saveStockButton"
-          class="refresh-button"
-          type="button"
-          disabled
-        >
-          在庫数を確認して保存
-        </button>
+  id="saveStockButton"
+  class="refresh-button"
+  type="button"
+  disabled
+>
+  変更内容を確認
+</button>
       </div>
     </div>
   </section>
@@ -718,6 +842,61 @@
 
 </main>
 
+
+<div class="modal-overlay" id="stockConfirmModal">
+  <div
+    class="modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="stockConfirmTitle"
+  >
+    <h2 id="stockConfirmTitle">在庫変更内容の確認</h2>
+
+    <p class="modal-description">
+      以下の内容で在庫数を変更しようとしています。
+      内容に間違いがないか確認してください。
+    </p>
+
+    <div id="stockConfirmBranch"
+      style="font-weight:700; margin-bottom:12px;">
+    </div>
+
+    <div class="table-wrap">
+      <table class="change-table">
+        <thead>
+          <tr>
+            <th>福祉用具</th>
+            <th>変更前</th>
+            <th>変更後</th>
+            <th>増減</th>
+          </tr>
+        </thead>
+        <tbody id="stockConfirmBody"></tbody>
+      </table>
+    </div>
+
+    <div class="modal-note" id="stockConfirmNote"></div>
+
+    <div class="modal-actions">
+      <button
+        type="button"
+        class="modal-button"
+        id="closeStockConfirm"
+      >
+        戻って修正する
+      </button>
+
+      <button
+        type="button"
+        class="modal-button primary"
+        id="finishStockConfirm"
+      >
+        確認しました
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -729,9 +908,13 @@
     "https://script.google.com/macros/s/AKfycbwF5pM0Pw3BbVhX79LQL9EzuFTnl8CIxWGmqZFWHC8vF1Ye8s0xa8c4hqJas0P-q478zA/exec";
 
   let currentBranchId = "";
-  let requestTimer = null;
-  let toastTimer = null;
-  let requestNumber = 0;
+let requestTimer = null;
+let toastTimer = null;
+let requestNumber = 0;
+
+// 現在読み込んでいる在庫データ
+let originalStockData = [];
+let currentBranchName = "";
 
   const branchSelect =
     document.getElementById("branchSelect");
@@ -766,11 +949,30 @@
     });
 
     refreshButton.addEventListener("click", () => {
-      loadInventory(currentBranchId);
-    });
+  loadInventory(currentBranchId);
+});
 
-    loadMasterData();
+// 在庫変更内容の確認ボタン
+document.getElementById("saveStockButton")
+  .addEventListener("click", openStockConfirm);
 
+// 確認画面を閉じる
+document.getElementById("closeStockConfirm")
+  .addEventListener("click", closeStockConfirm);
+
+// 確認画面の確認ボタン
+document.getElementById("finishStockConfirm")
+  .addEventListener("click", closeStockConfirm);
+
+// モーダルの背景をクリックした場合も閉じる
+document.getElementById("stockConfirmModal")
+  .addEventListener("click", event => {
+    if (event.target.id === "stockConfirmModal") {
+      closeStockConfirm();
+    }
+  });
+
+loadMasterData();
   });
 
 
@@ -1045,12 +1247,22 @@ renderStockEditor(data);
 
   function renderStockEditor(data) {
 
-    const body = document.getElementById("stockEditBody");
+  const body = document.getElementById("stockEditBody");
 
-    body.replaceChildren();
+  body.replaceChildren();
 
-    data.inventory.forEach(item => {
+  // 元の在庫数を保存
+  originalStockData = data.inventory.map(item => ({
+    itemId: item.itemId,
+    itemName: item.itemName,
+    total: item.total,
+    loaned: item.loaned,
+    repair: item.repair
+  }));
 
+  currentBranchName = data.branchName;
+
+  data.inventory.forEach(item => {
       const row = document.createElement("tr");
 
       // 物品名
@@ -1102,15 +1314,16 @@ renderStockEditor(data);
       // 入力時に利用可能数を再計算
       totalInput.addEventListener("input", () => {
 
-        updateStockAvailable(
-          totalInput,
-          item.loaned,
-          item.repair,
-          availableValue
-        );
+  updateStockAvailable(
+    totalInput,
+    item.loaned,
+    item.repair,
+    availableValue
+  );
 
-      });
+  updateStockSaveButton();
 
+});
       row.append(
         nameCell,
         totalCell,
@@ -1163,14 +1376,167 @@ renderStockEditor(data);
 
   }
 
-  // =====================================
-  // スケルトン表示
-  // =====================================
+  
+// =====================================
+// 在庫変更ボタンの有効・無効判定
+// =====================================
 
-  function showSkeleton() {
+function updateStockSaveButton() {
 
-    const body =
-      document.getElementById("inventoryBody");
+  const button = document.getElementById("saveStockButton");
+
+  const inputs = document.querySelectorAll(".stock-total-input");
+
+  let hasChange = false;
+  let allValid = true;
+
+  inputs.forEach(input => {
+
+    const item = originalStockData.find(
+      item => item.itemId === input.dataset.itemId
+    );
+
+    if (!item) {
+      allValid = false;
+      return;
+    }
+
+    const total = input.value === ""
+      ? NaN
+      : Number(input.value);
+
+    const valid =
+      Number.isSafeInteger(total) &&
+      total >= 0 &&
+      total >= item.loaned + item.repair;
+
+    if (!valid) {
+      allValid = false;
+    }
+
+    if (total !== item.total) {
+      hasChange = true;
+    }
+
+  });
+
+  button.disabled = !hasChange || !allValid;
+
+  button.textContent = "変更内容を確認";
+
+}
+
+
+// =====================================
+// 在庫変更確認画面を開く
+// =====================================
+
+function openStockConfirm() {
+
+  const inputs = document.querySelectorAll(".stock-total-input");
+
+  const body = document.getElementById("stockConfirmBody");
+
+  body.replaceChildren();
+
+  let changeCount = 0;
+
+  inputs.forEach(input => {
+
+    const item = originalStockData.find(
+      item => item.itemId === input.dataset.itemId
+    );
+
+    if (!item) return;
+
+    const newTotal = Number(input.value);
+
+    const difference = newTotal - item.total;
+
+    // 変更がない物品は表示しない
+    if (difference === 0) return;
+
+    changeCount++;
+
+    const row = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = item.itemName;
+
+    const oldCell = document.createElement("td");
+    oldCell.textContent = item.total + " 点";
+
+    const newCell = document.createElement("td");
+    newCell.textContent = newTotal + " 点";
+
+    const diffCell = document.createElement("td");
+    diffCell.className = "change-value";
+
+    const sign = difference > 0 ? "+" : "";
+
+    diffCell.textContent = sign + difference + " 点";
+
+    diffCell.classList.add(
+      difference > 0
+        ? "change-positive"
+        : "change-negative"
+    );
+
+    row.append(
+      nameCell,
+      oldCell,
+      newCell,
+      diffCell
+    );
+
+    body.appendChild(row);
+
+  });
+
+  if (changeCount === 0) {
+
+    showToast("変更された在庫数がありません。");
+
+    return;
+
+  }
+
+  document.getElementById("stockConfirmBranch")
+    .textContent = "対象拠点：" + currentBranchName;
+
+  const note = document.getElementById("stockNote").value.trim();
+
+  document.getElementById("stockConfirmNote")
+    .textContent = note
+      ? "備考：" + note
+      : "備考：なし";
+
+  document.getElementById("stockConfirmModal")
+    .classList.add("open");
+
+}
+
+
+// =====================================
+// 在庫変更確認画面を閉じる
+// =====================================
+
+function closeStockConfirm() {
+
+  document.getElementById("stockConfirmModal")
+    .classList.remove("open");
+
+}
+
+
+// =====================================
+// スケルトン表示
+// =====================================
+
+function showSkeleton() {
+
+  const body =
+    document.getElementById("inventoryBody");
 
     body.innerHTML = `
       <tr>
