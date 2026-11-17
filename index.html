@@ -26,6 +26,19 @@
       padding: 24px;
       border-radius: 10px;
     }
+    #status {
+      padding: 14px;
+      border-radius: 8px;
+      background: #eee;
+    }
+    .success {
+      background: #d9f5df !important;
+      color: #17652b;
+    }
+    .error {
+      background: #ffe0e0 !important;
+      color: #a00000;
+    }
   </style>
 </head>
 <body>
@@ -35,9 +48,47 @@
   </header>
 
   <main>
-    <h2>システム準備中</h2>
-    <p>GitHub Pagesの表示テストです。</p>
-    <p>この画面が表示されれば、HTMLの設置は成功です。</p>
+    <h2>システム接続テスト</h2>
+    <p>Google Apps Scriptとの接続を確認しています。</p>
+    <div id="status">接続確認中...</div>
   </main>
+
+  <script>
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbwF5pM0Pw3BbVhX79LQL9EzuFTnl8CIxWGmqZFWHC8vF1Ye8s0xa8c4hqJas0P-q478zA/exec";
+
+    function receiveApiResponse(data) {
+      const status = document.getElementById("status");
+
+      if (data && data.success === true) {
+        status.className = "success";
+        status.textContent =
+          "接続成功！ " + data.message;
+      } else {
+        status.className = "error";
+        status.textContent = "接続エラー：応答内容を確認してください。";
+      }
+    }
+
+    function connectApi() {
+      const status = document.getElementById("status");
+      const script = document.createElement("script");
+
+      status.textContent = "接続確認中...";
+
+      script.src =
+        API_URL + "?callback=receiveApiResponse";
+
+      script.onerror = function() {
+        status.className = "error";
+        status.textContent =
+          "接続失敗：GASの応答を取得できませんでした。";
+      };
+
+      document.body.appendChild(script);
+    }
+
+    connectApi();
+  </script>
 </body>
 </html>
