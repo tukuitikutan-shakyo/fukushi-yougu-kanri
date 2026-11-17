@@ -4,91 +4,584 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
   <title>福祉用具貸出管理システム</title>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+
   <style>
+    :root {
+      --brand: #285777;
+      --brand-dark: #1d405a;
+      --accent: #3b8190;
+      --bg: #f5f7f9;
+      --surface: #ffffff;
+      --border: #e2e8ee;
+      --text: #263746;
+      --muted: #718096;
+      --success: #26734d;
+      --danger: #b33d3d;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: sans-serif;
       margin: 0;
-      padding: 24px;
-      background: #f4f6f8;
-      color: #333;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        -apple-system, BlinkMacSystemFont,
+        "Segoe UI", "Noto Sans JP", sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
     }
-    header {
-      background: #234f73;
+
+    button, select {
+      font: inherit;
+    }
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: 64px;
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-inner {
+      max-width: 1200px;
+      height: 100%;
+      margin: auto;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      background: var(--brand);
       color: white;
+      border-radius: 9px;
+    }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--success);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      background: #39976a;
+      border-radius: 50%;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 30px 24px 60px;
+    }
+
+    .breadcrumb {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 22px;
+    }
+
+    .page-heading {
+      margin-bottom: 26px;
+    }
+
+    .page-heading h1 {
+      font-size: 25px;
+      letter-spacing: -.5px;
+      margin: 0 0 6px;
+    }
+
+    .page-heading p {
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       padding: 20px;
-      border-radius: 10px;
     }
-    main {
-      max-width: 600px;
-      margin: 24px auto;
-      background: white;
-      padding: 24px;
-      border-radius: 10px;
+
+    .summary-label {
+      color: var(--muted);
+      font-size: 13px;
     }
-    #status {
-      padding: 14px;
-      border-radius: 8px;
-      background: #eee;
+
+    .summary-number {
+      margin-top: 5px;
+      font-size: 29px;
+      font-weight: 700;
+      color: var(--brand);
+      font-variant-numeric: tabular-nums;
     }
-    .success {
-      background: #d9f5df !important;
-      color: #17652b;
+
+    .summary-unit {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 4px;
     }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 13px;
+    }
+
+    .section-heading h2 {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .section-heading span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .master-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 17px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .panel-title i {
+      color: var(--brand);
+      width: 18px;
+      height: 18px;
+    }
+
+    .count {
+      background: #edf3f7;
+      color: var(--brand);
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .data-list {
+      padding: 5px 20px;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 49px;
+      border-bottom: 1px solid #edf0f3;
+      gap: 12px;
+    }
+
+    .data-row:last-child {
+      border-bottom: 0;
+    }
+
+    .data-name {
+      font-weight: 500;
+    }
+
+    .data-id {
+      color: var(--muted);
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .category-list {
+      padding: 18px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+    }
+
+    .category-chip {
+      background: #f4f7f9;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 7px 12px;
+      font-size: 13px;
+    }
+
+    .status {
+      margin-top: 22px;
+      padding: 14px 16px;
+      background: #edf7f1;
+      color: var(--success);
+      border: 1px solid #d6eadd;
+      border-radius: 9px;
+      font-size: 13px;
+    }
+
     .error {
-      background: #ffe0e0 !important;
-      color: #a00000;
+      background: #fff0f0;
+      border-color: #f0cccc;
+      color: var(--danger);
+    }
+
+    .skeleton {
+      height: 18px;
+      margin: 15px 0;
+      border-radius: 5px;
+      background: linear-gradient(
+        90deg, #edf0f3 25%, #f7f8fa 50%, #edf0f3 75%
+      );
+      background-size: 200% 100%;
+      animation: loading 1.4s infinite;
+    }
+
+    @keyframes loading {
+      to { background-position: -200% 0; }
+    }
+
+    .footer {
+      margin-top: 30px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 700px) {
+      .header-inner {
+        padding: 0 16px;
+      }
+
+      .container {
+        padding: 22px 16px 40px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .summary-card {
+        padding: 15px 18px;
+      }
+
+      .summary-number {
+        font-size: 24px;
+      }
+
+      .master-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .page-heading h1 {
+        font-size: 21px;
+      }
+
+      .connection {
+        font-size: 11px;
+      }
     }
   </style>
 </head>
+
 <body>
-  <header>
-    <h1>福祉用具貸出管理システム</h1>
-    <p>福祉用具無料貸出事業</p>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark">
+          <i data-lucide="clipboard-list"></i>
+        </div>
+        <span>福祉用具貸出管理</span>
+      </div>
+
+      <div class="connection" id="connection">
+        <span class="connection-dot"></span>
+        <span>接続確認中</span>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <h2>システム接続テスト</h2>
-    <p>Google Apps Scriptとの接続を確認しています。</p>
-    <div id="status">接続確認中...</div>
+  <main class="container">
+
+    <div class="breadcrumb">
+      ホーム / マスターデータ確認
+    </div>
+
+    <div class="page-heading">
+      <h1>マスターデータ確認</h1>
+      <p>福祉用具無料貸出事業の基本情報</p>
+    </div>
+
+    <section class="summary">
+      <div class="summary-card">
+        <div class="summary-label">登録拠点数</div>
+        <div class="summary-number">
+          <span id="baseCount">－</span>
+          <span class="summary-unit">拠点</span>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">管理物品数</div>
+        <div class="summary-number">
+          <span id="itemCount">－</span>
+          <span class="summary-unit">種類</span>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-label">対象者区分数</div>
+        <div class="summary-number">
+          <span id="categoryCount">－</span>
+          <span class="summary-unit">区分</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-heading">
+      <h2>登録情報</h2>
+      <span>Googleスプレッドシートから取得</span>
+    </div>
+
+    <section class="master-grid">
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i data-lucide="building-2"></i>
+            拠点一覧
+          </div>
+          <span class="count" id="baseBadge">－</span>
+        </div>
+        <div class="data-list" id="baseList">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i data-lucide="package"></i>
+            管理物品一覧
+          </div>
+          <span class="count" id="itemBadge">－</span>
+        </div>
+        <div class="data-list" id="itemList">
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+          <div class="skeleton"></div>
+        </div>
+      </div>
+
+      <div class="panel full-width">
+        <div class="panel-header">
+          <div class="panel-title">
+            <i data-lucide="users"></i>
+            対象者区分
+          </div>
+          <span class="count" id="categoryBadge">－</span>
+        </div>
+        <div class="category-list" id="categoryList">
+          <div class="skeleton" style="width:120px"></div>
+          <div class="skeleton" style="width:120px"></div>
+          <div class="skeleton" style="width:120px"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <div id="status" class="status">
+      データを取得しています。
+    </div>
+
+    <div class="footer">
+      福祉用具無料貸出事業 管理システム
+    </div>
+
   </main>
 
   <script>
     const API_URL =
       "https://script.google.com/macros/s/AKfycbwF5pM0Pw3BbVhX79LQL9EzuFTnl8CIxWGmqZFWHC8vF1Ye8s0xa8c4hqJas0P-q478zA/exec";
 
-    function receiveApiResponse(data) {
-      const status = document.getElementById("status");
+    let timeoutId;
 
-      if (data && data.success === true) {
-        status.className = "success";
-        status.textContent =
-          "接続成功！ " + data.message;
-      } else {
-        status.className = "error";
-        status.textContent = "接続エラー：応答内容を確認してください。";
+    function receiveMasterData(data) {
+      clearTimeout(timeoutId);
+
+      const status = document.getElementById("status");
+      const connection = document.getElementById("connection");
+
+      if (!data || data.success !== true) {
+        showError(
+          data && data.message
+            ? data.message
+            : "データを取得できませんでした。"
+        );
+        return;
+      }
+
+      renderList("baseList", data.bases);
+      renderList("itemList", data.items);
+      renderCategories(data.categories);
+
+      document.getElementById("baseCount").textContent =
+        data.bases.length;
+      document.getElementById("itemCount").textContent =
+        data.items.length;
+      document.getElementById("categoryCount").textContent =
+        data.categories.length;
+
+      document.getElementById("baseBadge").textContent =
+        data.bases.length + "件";
+      document.getElementById("itemBadge").textContent =
+        data.items.length + "件";
+      document.getElementById("categoryBadge").textContent =
+        data.categories.length + "件";
+
+      connection.innerHTML =
+        '<span class="connection-dot"></span><span>接続中</span>';
+
+      status.className = "status";
+      status.textContent =
+        "マスターデータを正常に取得しました。";
+
+      if (window.lucide) {
+        lucide.createIcons();
       }
     }
 
-    function connectApi() {
+    function renderList(elementId, data) {
+      const container = document.getElementById(elementId);
+      container.replaceChildren();
+
+      data.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "data-row";
+
+        const name = document.createElement("span");
+        name.className = "data-name";
+        name.textContent = item.name;
+
+        const id = document.createElement("span");
+        id.className = "data-id";
+        id.textContent = item.id;
+
+        row.append(name, id);
+        container.appendChild(row);
+      });
+    }
+
+    function renderCategories(data) {
+      const container =
+        document.getElementById("categoryList");
+
+      container.replaceChildren();
+
+      data.forEach(item => {
+        const chip = document.createElement("span");
+        chip.className = "category-chip";
+        chip.textContent = item.name;
+        container.appendChild(chip);
+      });
+    }
+
+    function showError(message) {
+      clearTimeout(timeoutId);
+
       const status = document.getElementById("status");
+      const connection = document.getElementById("connection");
+
+      status.className = "status error";
+      status.textContent = "取得エラー：" + message;
+
+      connection.innerHTML =
+        '<span style="color:#b33d3d">●</span><span style="color:#b33d3d">接続エラー</span>';
+    }
+
+    function connectApi() {
       const script = document.createElement("script");
 
-      status.textContent = "接続確認中...";
-
       script.src =
-        API_URL + "?callback=receiveApiResponse";
+        API_URL +
+        "?action=masterData&callback=receiveMasterData&t=" +
+        Date.now();
 
       script.onerror = function() {
-        status.className = "error";
-        status.textContent =
-          "接続失敗：GASの応答を取得できませんでした。";
+        showError("GASから応答を取得できませんでした。");
+        script.remove();
       };
+
+      timeoutId = setTimeout(function() {
+        showError("通信がタイムアウトしました。");
+        script.remove();
+      }, 15000);
 
       document.body.appendChild(script);
     }
 
     connectApi();
   </script>
+
 </body>
 </html>
