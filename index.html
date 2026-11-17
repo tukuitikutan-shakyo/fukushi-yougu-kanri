@@ -654,13 +654,16 @@
 
 <header class="header">
   <div class="header-inner">
-    <div class="brand">
+        <div class="brand">
       <div class="brand-mark">
         <i data-lucide="clipboard-list"></i>
       </div>
       <span>福祉用具貸出管理</span>
+      <small style="font-size:10px; color:var(--muted); font-weight:500;">
+        update20261118
+      </small>
     </div>
-
+    
     <div class="header-right">
       <div class="connection" id="connection">
         <span class="connection-dot"></span>
@@ -829,9 +832,96 @@
 >
   変更内容を確認
 </button>
-      </div>
+            </div>
     </div>
   </section>
+
+  <!-- 個体管理 -->
+  <section id="individualManagement" style="margin-top: 28px;">
+    <div class="section-heading">
+      <h2>個体管理</h2>
+      <span id="individualCount">0点</span>
+    </div>
+
+    <div class="panel" style="padding: 20px;">
+
+      <h3 style="margin-top: 0;">新しい個体を登録</h3>
+
+      <div class="field" style="margin-bottom: 16px;">
+        <label for="individualItemSelect">福祉用具</label>
+        <div class="select-wrap">
+          <select id="individualItemSelect">
+            <option value="">物品を選択してください</option>
+          </select>
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom: 16px;">
+        <label for="individualIdentifier">識別ネーム</label>
+        <input
+          id="individualIdentifier"
+          type="text"
+          maxlength="100"
+          placeholder="例：車いす001"
+          style="width:100%; height:44px; padding:0 12px;
+          border:1px solid var(--border); border-radius:8px;"
+        >
+      </div>
+
+      <div class="field" style="margin-bottom: 16px;">
+        <label for="individualNote">備考（任意）</label>
+        <input
+          id="individualNote"
+          type="text"
+          maxlength="500"
+          placeholder="例：背もたれに傷あり"
+          style="width:100%; height:44px; padding:0 12px;
+          border:1px solid var(--border); border-radius:8px;"
+        >
+      </div>
+
+      <div style="text-align:right;">
+        <button
+          type="button"
+          class="refresh-button"
+          id="registerIndividualButton"
+          disabled
+        >
+          個体を登録
+        </button>
+      </div>
+
+    </div>
+
+    <div class="section-heading" style="margin-top:24px;">
+      <h2>登録済み個体一覧</h2>
+      <span>この拠点の登録情報</span>
+    </div>
+
+    <div class="panel">
+      <div class="table-wrap">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>福祉用具</th>
+              <th>識別ネーム</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody id="individualBody">
+            <tr>
+              <td colspan="3">
+                個体情報を読み込んでいます。
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    </section>
+
   <div class="status-area" id="status">
     データを取得しています。
   </div>
@@ -967,6 +1057,10 @@ document.getElementById("closeStockConfirm")
 document.getElementById("finishStockConfirm")
   .addEventListener("click", saveStock);
 
+// 個体登録ボタン
+document.getElementById("registerIndividualButton")
+  .addEventListener("click", registerIndividual);
+
 // モーダルの背景をクリックした場合も閉じる
 document.getElementById("stockConfirmModal")
   .addEventListener("click", event => {
@@ -1055,11 +1149,30 @@ loadMasterData();
         branchSelect.disabled = true;
 
         // 在庫再読み込みは有効化
-        refreshButton.disabled = false;
+refreshButton.disabled = false;
+
+// 個体登録ボタンを有効化
+document.getElementById("registerIndividualButton").disabled = false;
+
+// 個体登録用の物品選択肢を作成
+const itemSelect =
+  document.getElementById("individualItemSelect");
+        itemSelect.replaceChildren();
+
+        const defaultOption = document.createElement("option");
+        defaultOption.value = "";
+        defaultOption.textContent = "物品を選択してください";
+        itemSelect.appendChild(defaultOption);
+
+        data.items.forEach(item => {
+          const option = document.createElement("option");
+          option.value = item.id;
+          option.textContent = item.name;
+          itemSelect.appendChild(option);
+        });
 
         // 指定された拠点の在庫を取得
         loadInventory(currentBranchId);
-
       }
     );
 
@@ -1094,7 +1207,12 @@ loadMasterData();
           return;
         }
 
-        renderInventory(data);
+                renderInventory(data);
+
+        // 登録済み個体一覧を取得
+        loadIndividualAssets(branchId);
+
+        setConnection("接続中");
 
         setConnection("接続中");
 
@@ -1108,8 +1226,179 @@ loadMasterData();
     );
 
   }
+  // =====================================
+  // 登録済み個体一覧の取得・表示
+  // =====================================
 
+  function loadIndividualAssets(branchId) {
 
+    callApi(
+      {
+        action: "individuals",
+        branchId: branchId
+      },
+      data => {
+
+        const body =
+          document.getElementById("individualBody");
+
+        const count =
+          document.getElementById("individualCount");
+
+        body.replaceChildren();
+
+        if (!data || data.success !== true) {
+          body.textContent = "個体情報を取得できませんでした。";
+          count.textContent = "取得失敗";
+          return;
+        }
+
+        count.textContent = data.count + "点";
+
+        if (!Array.isArray(data.assets) || data.assets.length === 0) {
+
+          const row = document.createElement("tr");
+          const cell = document.createElement("td");
+
+          cell.colSpan = 3;
+          cell.textContent = "登録済みの個体はありません。";
+
+          row.appendChild(cell);
+          body.appendChild(row);
+
+          return;
+        }
+
+        data.assets.forEach(asset => {
+
+          const row = document.createElement("tr");
+
+          const itemCell = document.createElement("td");
+          itemCell.textContent = asset.itemName;
+
+          const identifierCell = document.createElement("td");
+          identifierCell.textContent = asset.identifier;
+
+          const statusCell = document.createElement("td");
+          statusCell.textContent = asset.status;
+
+          row.append(
+            itemCell,
+            identifierCell,
+            statusCell
+          );
+
+          body.appendChild(row);
+
+        });
+
+      }
+    );
+
+  }
+// =====================================
+// 個体登録
+// =====================================
+
+async function registerIndividual() {
+
+  const button = document.getElementById("registerIndividualButton");
+
+  const itemId = document.getElementById("individualItemSelect").value;
+  const identifier = document.getElementById("individualIdentifier").value.trim();
+  const note = document.getElementById("individualNote").value.trim();
+
+  // 入力チェック
+  if (!currentBranchId) {
+    showToast("拠点を特定できません。");
+    return;
+  }
+
+  if (!itemId) {
+    showToast("福祉用具を選択してください。");
+    return;
+  }
+
+  if (!identifier) {
+    showToast("識別ネームを入力してください。");
+    return;
+  }
+
+  // 二重送信を防止
+  button.disabled = true;
+  button.textContent = "登録中...";
+
+  try {
+
+    const payload = {
+      action: "registerIndividual",
+      branchId: currentBranchId,
+      itemId: itemId,
+      identifier: identifier,
+      note: note
+    };
+
+    // GASへ登録データを送信
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "text/plain;charset=UTF-8"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    button.textContent = "登録結果を確認中...";
+
+    // 登録後、個体一覧を再取得して照合
+    callApi(
+      {
+        action: "individuals",
+        branchId: currentBranchId
+      },
+      data => {
+
+        button.disabled = false;
+        button.textContent = "個体を登録";
+
+        if (!data || data.success !== true) {
+          showError("登録後の確認に失敗しました。個体一覧を再読み込みしてください。");
+          return;
+        }
+
+        const registered = data.assets.some(
+  asset =>
+    asset.identifier === identifier &&
+    asset.itemId === itemId
+);
+        if (!registered) {
+          showError("個体の登録を確認できませんでした。入力内容と登録状況を確認してください。");
+          return;
+        }
+
+        // 登録を確認できた場合のみ入力欄をクリア
+        document.getElementById("individualItemSelect").value = "";
+        document.getElementById("individualIdentifier").value = "";
+        document.getElementById("individualNote").value = "";
+
+        // 在庫と個体一覧を再読み込み
+        loadInventory(currentBranchId);
+
+        showToast("個体を登録しました。");
+
+      }
+    );
+
+  } catch (error) {
+
+    button.disabled = false;
+    button.textContent = "個体を登録";
+
+    showError("登録リクエストの送信に失敗しました。通信状態を確認してください。");
+
+  }
+
+}
   // =====================================
   // JSONP通信共通処理
   // =====================================
