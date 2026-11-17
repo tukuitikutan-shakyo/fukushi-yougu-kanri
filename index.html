@@ -907,11 +907,14 @@
   const API_URL =
     "https://script.google.com/macros/s/AKfycbwF5pM0Pw3BbVhX79LQL9EzuFTnl8CIxWGmqZFWHC8vF1Ye8s0xa8c4hqJas0P-q478zA/exec";
 
-  let currentBranchId = "";
+  // URLの ?branch=B001 から拠点IDを取得
+const urlParams = new URLSearchParams(window.location.search);
+
+let currentBranchId = urlParams.get("branch") || "";
+
 let requestTimer = null;
 let toastTimer = null;
 let requestNumber = 0;
-
 // 現在読み込んでいる在庫データ
 let originalStockData = [];
 let currentBranchName = "";
