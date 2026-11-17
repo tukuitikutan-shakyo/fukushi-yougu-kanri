@@ -309,9 +309,44 @@
     }
 
     .available-number {
-      color: var(--success);
-      font-size: 16px;
-    }
+  color: var(--success);
+  font-size: 16px;
+}
+
+/* 在庫調整用の入力欄 */
+.stock-total-input {
+  width: 85px;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-total-input:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(40,87,119,.10);
+}
+
+.stock-total-input.invalid {
+  border-color: var(--danger);
+  background: #fff0f0;
+}
+
+.stock-edit-available {
+  color: var(--success);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-edit-available.invalid {
+  color: var(--danger);
+}
 
     .unit {
       color: var(--muted);
@@ -613,6 +648,66 @@
     </div>
   </section>
 
+  <section id="stockEditor" style="margin-top: 28px;">
+    <div class="section-heading">
+      <h2>在庫数の調整</h2>
+      <span>拠点ごとに登録</span>
+    </div>
+
+    <div class="panel" style="padding: 20px;">
+      <p style="margin-top: 0; color: var(--muted);">
+        実際の保有数を入力してください。
+        利用可能数は自動計算します。
+      </p>
+
+      <div class="table-wrap">
+        <table class="inventory-table">
+          <thead>
+            <tr>
+              <th>福祉用具</th>
+              <th>総在庫数</th>
+              <th>貸出中</th>
+              <th>整備中</th>
+              <th>利用可能</th>
+            </tr>
+          </thead>
+          <tbody id="stockEditBody">
+            <tr>
+              <td colspan="5">
+                在庫情報を読み込んでいます。
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 18px;">
+        <label for="stockNote"
+          style="display:block; margin-bottom:7px; font-weight:600;">
+          備考（任意）
+        </label>
+        <input
+          id="stockNote"
+          type="text"
+          placeholder="例：初回の実数確認"
+          style="width:100%; max-width:500px; height:44px;
+          padding:0 12px; border:1px solid var(--border);
+          border-radius:8px;"
+        >
+      </div>
+
+      <div style="margin-top:20px; text-align:right;">
+        <button
+          id="saveStockButton"
+          class="refresh-button"
+          type="button"
+          disabled
+        >
+          在庫数を確認して保存
+        </button>
+      </div>
+    </div>
+  </section>
   <div class="status-area" id="status">
     データを取得しています。
   </div>
@@ -931,16 +1026,142 @@
     });
 
     document.getElementById("totalCount")
-      .textContent = total;
+  .textContent = total;
 
-    document.getElementById("loanedCount")
-      .textContent = loaned;
+document.getElementById("loanedCount")
+  .textContent = loaned;
 
-    document.getElementById("availableCount")
-      .textContent = available;
+document.getElementById("availableCount")
+  .textContent = available;
+
+// 在庫調整欄にもデータを表示
+renderStockEditor(data);
+
+}
+　
+  // =====================================
+  // 在庫調整欄の描画
+  // =====================================
+
+  function renderStockEditor(data) {
+
+    const body = document.getElementById("stockEditBody");
+
+    body.replaceChildren();
+
+    data.inventory.forEach(item => {
+
+      const row = document.createElement("tr");
+
+      // 物品名
+      const nameCell = document.createElement("td");
+      const name = document.createElement("span");
+
+      name.textContent = item.itemName;
+      name.className = "item-name";
+
+      nameCell.appendChild(name);
+
+      // 総在庫数：入力可能
+      const totalCell = document.createElement("td");
+      const totalInput = document.createElement("input");
+
+      totalInput.type = "number";
+      totalInput.min = "0";
+      totalInput.step = "1";
+      totalInput.value = item.total;
+      totalInput.className = "stock-total-input";
+      totalInput.dataset.itemId = item.itemId;
+      totalInput.setAttribute(
+        "aria-label",
+        item.itemName + "の総在庫数"
+      );
+
+      totalCell.appendChild(totalInput);
+
+      // 貸出中：表示のみ
+      const loanedCell = document.createElement("td");
+
+      loanedCell.textContent = item.loaned + " 点";
+
+      // 整備中：表示のみ
+      const repairCell = document.createElement("td");
+
+      repairCell.textContent = item.repair + " 点";
+
+      // 利用可能数：自動計算
+      const availableCell = document.createElement("td");
+      const availableValue = document.createElement("span");
+
+      availableValue.className = "stock-edit-available";
+      availableValue.textContent =
+        item.total - item.loaned - item.repair;
+
+      availableCell.appendChild(availableValue);
+
+      // 入力時に利用可能数を再計算
+      totalInput.addEventListener("input", () => {
+
+        updateStockAvailable(
+          totalInput,
+          item.loaned,
+          item.repair,
+          availableValue
+        );
+
+      });
+
+      row.append(
+        nameCell,
+        totalCell,
+        loanedCell,
+        repairCell,
+        availableCell
+      );
+
+      body.appendChild(row);
+
+    });
 
   }
 
+
+  // =====================================
+  // 利用可能数の自動計算
+  // =====================================
+
+  function updateStockAvailable(
+    input,
+    loaned,
+    repair,
+    availableElement
+  ) {
+
+    const total = input.value === ""
+      ? NaN
+      : Number(input.value);
+
+    const valid =
+      Number.isSafeInteger(total) &&
+      total >= 0 &&
+      total >= loaned + repair;
+
+    input.classList.toggle("invalid", !valid);
+
+    availableElement.classList.toggle("invalid", !valid);
+
+    if (!valid) {
+
+      availableElement.textContent = "入力確認";
+
+      return;
+
+    }
+
+    availableElement.textContent =
+      total - loaned - repair;
+
+  }
 
   // =====================================
   // スケルトン表示
