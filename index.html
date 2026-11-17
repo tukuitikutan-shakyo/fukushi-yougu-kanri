@@ -960,9 +960,9 @@ document.getElementById("saveStockButton")
 document.getElementById("closeStockConfirm")
   .addEventListener("click", closeStockConfirm);
 
-// 確認画面の確認ボタン
+// 確認画面の保存ボタン
 document.getElementById("finishStockConfirm")
-  .addEventListener("click", closeStockConfirm);
+  .addEventListener("click", saveStock);
 
 // モーダルの背景をクリックした場合も閉じる
 document.getElementById("stockConfirmModal")
@@ -1332,9 +1332,12 @@ renderStockEditor(data);
         availableCell
       );
 
-      body.appendChild(row);
+            body.appendChild(row);
 
     });
+
+    // 最新データを表示した後、保存ボタンの状態を更新
+    updateStockSaveButton();
 
   }
 
@@ -1516,6 +1519,105 @@ function openStockConfirm() {
 
 }
 
+
+// =====================================
+// 在庫数をGoogleスプレッドシートに保存
+// =====================================
+
+async function saveStock() {
+
+  const button = document.getElementById("finishStockConfirm");
+
+  const inputs = document.querySelectorAll(".stock-total-input");
+
+  const changes = [];
+
+  // 変更された物品だけを抽出
+  for (const input of inputs) {
+
+    const item = originalStockData.find(
+      item => item.itemId === input.dataset.itemId
+    );
+
+    if (!item) continue;
+
+    const newTotal = Number(input.value);
+
+    if (
+      !Number.isSafeInteger(newTotal) ||
+      newTotal < 0 ||
+      newTotal < item.loaned + item.repair
+    ) {
+      showToast("在庫数を確認してください。");
+      return;
+    }
+
+    if (newTotal !== item.total) {
+
+      changes.push({
+        itemId: item.itemId,
+        newTotal: newTotal
+      });
+
+    }
+
+  }
+
+  if (changes.length === 0) {
+    showToast("変更された在庫数がありません。");
+    closeStockConfirm();
+    return;
+  }
+
+  // 二重送信を防止
+  button.disabled = true;
+  button.textContent = "送信中...";
+
+  try {
+
+    // 変更された物品を順番に送信
+    for (const change of changes) {
+
+      const payload = {
+        action: "adjustInventory",
+        branchId: currentBranchId,
+        itemId: change.itemId,
+        newTotal: change.newTotal,
+        note: document.getElementById("stockNote").value.trim()
+      };
+
+      await fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: {
+          "Content-Type": "text/plain;charset=UTF-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+    }
+
+    closeStockConfirm();
+
+    showToast(
+      "保存リクエストを送信しました。在庫を再取得します。"
+    );
+
+    // 最新の在庫データを再取得
+    loadInventory(currentBranchId);
+
+  } catch (error) {
+
+    showError(
+      "保存リクエストの送信に失敗しました。通信状態を確認してください。"
+    );
+
+    button.disabled = false;
+    button.textContent = "確認しました";
+
+  }
+
+}
 
 // =====================================
 // 在庫変更確認画面を閉じる
