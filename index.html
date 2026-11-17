@@ -1015,6 +1015,24 @@ loadMasterData();
           return;
         }
 
+                // URLで指定された拠点をマスターから検索
+        const selectedBase = data.bases.find(
+          base => base.id === currentBranchId
+        );
+
+        // URLの拠点IDが不正・未指定の場合
+        if (!selectedBase) {
+          branchSelect.disabled = true;
+          refreshButton.disabled = true;
+
+          showError(
+            "拠点を特定できません。拠点専用URLを確認してください。"
+          );
+
+          return;
+        }
+
+        // 拠点一覧を表示
         branchSelect.replaceChildren();
 
         data.bases.forEach(base => {
@@ -1027,20 +1045,16 @@ loadMasterData();
 
         });
 
-        branchSelect.disabled = false;
-        refreshButton.disabled = false;
-
-        // 初期表示は中央区があれば中央区
-        const central = data.bases.find(
-          base => base.id === "B001"
-        );
-
-        currentBranchId = central
-          ? central.id
-          : data.bases[0].id;
-
+        // URLで指定された拠点を選択
         branchSelect.value = currentBranchId;
 
+        // 拠点の変更はできないようにする
+        branchSelect.disabled = true;
+
+        // 在庫再読み込みは有効化
+        refreshButton.disabled = false;
+
+        // 指定された拠点の在庫を取得
         loadInventory(currentBranchId);
 
       }
