@@ -1005,6 +1005,9 @@
     .timeline-bar { height:27px; min-width:7px; border-radius:5px; position:absolute; top:15px; display:flex; align-items:center; padding:0 8px; color:white; font-size:11px; font-weight:600; white-space:nowrap; overflow:hidden; box-shadow:inset 0 0 0 1px rgba(0,0,0,.06); }
     .timeline-bar::after { content:""; position:absolute; right:0; top:0; width:0; height:0; border-top:13.5px solid transparent; border-bottom:13.5px solid transparent; border-left:9px solid rgba(255,255,255,.9); }
     .timeline-empty { padding:28px; text-align:center; color:#667085; }
+    .timeline-returned-badge { display:inline-flex; align-self:flex-start; width:max-content; padding:2px 7px; border-radius:999px; background:#eef0f2; color:#475467; font-size:10px; font-weight:700; }
+    .timeline-bar-returned { color:#fff; }
+    .timeline-bar-returned::after { border-left-color:#fff; }
     @media(max-width:700px) { .timeline-head,.timeline-row { grid-template-columns:145px minmax(670px,1fr); } .timeline-toolbar { align-items:stretch; } .timeline-actions button { flex:1; } }
 
 </style>
@@ -1356,7 +1359,7 @@
         </div>
         <div class="timeline-actions">
           <button type="button" class="refresh-button" id="timelinePrev">前の20日</button>
-          <button type="button" class="refresh-button" id="timelineToday">今月</button>
+          <button type="button" class="refresh-button" id="timelineToday">今日</button>
           <button type="button" class="refresh-button" id="timelineNext">次の20日</button>
           <button type="button" class="refresh-button" id="refreshTimeline"><i data-lucide="refresh-cw"></i>再読み込み</button>
         </div>
@@ -1838,7 +1841,10 @@ document.getElementById("loanDate")
 
 document.getElementById("timelinePrev").addEventListener("click", () => shiftTimeline(-20));
 document.getElementById("timelineNext").addEventListener("click", () => shiftTimeline(20));
-document.getElementById("timelineToday").addEventListener("click", setTimelineMonth);
+document.getElementById("timelineToday").addEventListener("click", setTimelineToday);
+if (!document.getElementById("timelineStart").value) {
+  document.getElementById("timelineStart").value = localDateString(new Date());
+}
 document.getElementById("timelineStart").addEventListener("change", () => loadLoanTimeline(currentBranchId));
 document.getElementById("refreshTimeline").addEventListener("click", () => loadLoanTimeline(currentBranchId));
 
@@ -3708,9 +3714,8 @@ function showSkeleton() {
     return date.getFullYear() + "-" + String(date.getMonth()+1).padStart(2,"0") + "-" + String(date.getDate()).padStart(2,"0");
   }
 
-  function setTimelineMonth() {
-    const now = new Date();
-    document.getElementById("timelineStart").value = localDateString(new Date(now.getFullYear(), now.getMonth(), 1));
+  function setTimelineToday() {
+    document.getElementById("timelineStart").value = localDateString(new Date());
     loadLoanTimeline(currentBranchId);
   }
 
@@ -3744,11 +3749,13 @@ function showSkeleton() {
     const body = document.getElementById("loanTimelineBody");
     const count = document.getElementById("timelineCount");
     const input = document.getElementById("timelineStart");
-    if (!input.value) setTimelineMonth();
+    if (!input.value) input.value = localDateString(new Date());
     const start = new Date(input.value + "T00:00:00");
     const end = new Date(start); end.setDate(end.getDate()+20);
     const colors = ["#c45b4b", "#2f8f83", "#5679b8", "#b27a32", "#8064a2", "#4d879f"];
-    count.textContent = "貸出中 " + items.length + "点";
+    const activeCount = items.filter(item => item.status !== "返却済").length;
+    const returnedCount = items.filter(item => item.status === "返却済").length;
+    count.textContent = "貸出中 " + activeCount + "点 / 返却済 " + returnedCount + "点";
     const grid = document.createElement("div"); grid.className = "timeline-grid";
     const head = document.createElement("div"); head.className = "timeline-head";
     const nameHead = document.createElement("div"); nameHead.className = "timeline-name-head"; nameHead.textContent = "物品・識別ネーム";
@@ -3760,7 +3767,11 @@ function showSkeleton() {
       cell.textContent = (d.getMonth()+1)+"/"+d.getDate(); days.appendChild(cell);
     }
     head.append(nameHead,days); grid.appendChild(head);
-    const visible = items.filter(item => item.loanDate && item.dueDate && new Date(item.dueDate+"T23:59:59") >= start && new Date(item.loanDate+"T00:00:00") < end);
+    const visible = items.filter(item => {
+      if (!item.loanDate) return false;
+      const finishDate = item.status === "返却済" && item.returnDate ? item.returnDate : item.dueDate;
+      return finishDate && new Date(finishDate+"T23:59:59") >= start && new Date(item.loanDate+"T00:00:00") < end;
+    });
     visible.sort((a,b) => (a.loanDate||"").localeCompare(b.loanDate||"") || (a.itemName||"").localeCompare(b.itemName||"","ja"));
     if (!visible.length) {
       const empty=document.createElement("p"); empty.className="timeline-empty"; empty.textContent="この期間に重なる貸出はありません。"; body.replaceChildren(empty); return;
@@ -3769,13 +3780,21 @@ function showSkeleton() {
       const row=document.createElement("div"); row.className="timeline-row";
       const name=document.createElement("div"); name.className="timeline-name";
       const strong=document.createElement("strong"); strong.textContent=item.itemName || "物品";
-      const sub=document.createElement("span"); sub.textContent=(item.identifier ? item.identifier+" / " : "")+item.loanDate+" ～ "+item.dueDate;
+      const sub=document.createElement("span");
+      const finishDate = item.status === "返却済" && item.returnDate ? item.returnDate : item.dueDate;
+      sub.textContent=(item.identifier ? item.identifier+" / " : "")+item.loanDate+" ～ "+(finishDate || "返却予定日未設定");
       name.append(strong,sub);
+      if (item.status === "返却済") {
+        const badge=document.createElement("span"); badge.className="timeline-returned-badge"; badge.textContent="返却済"; name.appendChild(badge);
+      }
       const track=document.createElement("div"); track.className="timeline-track";
-      const loan=new Date(item.loanDate+"T00:00:00"); const due=new Date(item.dueDate+"T00:00:00");
+      const loan=new Date(item.loanDate+"T00:00:00");
+      const due=new Date(finishDate+"T00:00:00");
       const left=Math.max(0,(loan-start)/86400000); const right=Math.min(20,(due-start)/86400000+1);
       const bar=document.createElement("div"); bar.className="timeline-bar";
-      bar.style.left=(left/20*100)+"%"; bar.style.width=(Math.max(.8,(right-left)/20*100))+"%"; bar.style.background=colors[index%colors.length];
+      bar.style.left=(left/20*100)+"%"; bar.style.width=(Math.max(.8,(right-left)/20*100))+"%";
+      bar.style.background = item.status === "返却済" ? "#98a2b3" : colors[index%colors.length];
+      if (item.status === "返却済") bar.classList.add("timeline-bar-returned");
       const label=document.createElement("span"); label.textContent=item.identifier || item.itemName || "貸出中"; bar.appendChild(label);
       if (loan < start) bar.style.borderTopLeftRadius="0";
       if (due >= end) bar.style.borderTopRightRadius="0";
