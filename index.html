@@ -1081,15 +1081,16 @@
     <p>拠点ごとの福祉用具の保有状況を確認できます。</p>
   </div>
 
-  <nav class="page-tabs" role="tablist" aria-label="管理画面">
+    <nav class="page-tabs" role="tablist" aria-label="管理画面">
     <button type="button" class="page-tab active" role="tab" aria-selected="true" data-tab-target="loan">貸出登録</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="timeline">貸出期間一覧</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="return">返却登録</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="extension">延長受付</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="repair">整備管理</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="inventory">物品在庫一覧</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="monthlyReport">月別集計</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="annualReport">年度集計</button>
   </nav>
-
 
 
   <!-- 貸出登録 -->
@@ -1576,10 +1577,133 @@
 
     </section>
 
-  <div class="status-area" id="status">
-    データを取得しています。
-  </div>
+    <!-- 月別集計 -->
+  <section id="monthlyReport" data-tab-page="monthlyReport">
+    <div class="page-heading">
+      <h2>月別集計</h2>
+      <p>選択した月の貸出・延長実績と、年度累計を確認できます。</p>
+    </div>
 
+    <div class="toolbar">
+      <div class="field">
+        <label for="monthlyReportYear">年度</label>
+        <div class="select-wrap">
+          <select id="monthlyReportYear">
+            <option value="2026">令和8年度（2026年度）</option>
+          </select>
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="monthlyReportMonth">対象月</label>
+        <div class="select-wrap">
+          <select id="monthlyReportMonth">
+            <option value="4">4月</option>
+            <option value="5">5月</option>
+            <option value="6">6月</option>
+            <option value="7">7月</option>
+            <option value="8">8月</option>
+            <option value="9">9月</option>
+            <option value="10">10月</option>
+            <option value="11" selected>11月</option>
+            <option value="12">12月</option>
+            <option value="1">1月</option>
+            <option value="2">2月</option>
+            <option value="3">3月</option>
+          </select>
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+
+      <button type="button" class="refresh-button" id="loadMonthlyReport">
+        <i data-lucide="refresh-cw"></i>
+        集計を更新
+      </button>
+    </div>
+
+    <div class="section-heading">
+      <h2>月別集計表</h2>
+      <span>全拠点・全対象者区分</span>
+    </div>
+
+    <div class="panel" style="padding:16px;">
+      <p style="color:var(--muted); margin-top:0;">
+        貸出件数・貸出点数・延長件数・延長点数を表示します。
+        表をコピーしてExcel等に貼り付けできます。
+      </p>
+
+      <button type="button" class="refresh-button" id="copyMonthlyReport">
+        <i data-lucide="copy"></i>
+        集計表をコピー
+      </button>
+
+      <div id="monthlyReportStatus" class="timeline-note">
+        集計データを読み込んでいません。
+      </div>
+
+      <div class="table-wrap" style="margin-top:14px;">
+        <table class="inventory-table" id="monthlyReportTable">
+          <tbody>
+            <tr>
+              <td>集計データを読み込んでください。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 年度集計 -->
+  <section id="annualReport" data-tab-page="annualReport">
+    <div class="page-heading">
+      <h2>年度集計</h2>
+      <p>4月から翌年3月までの貸出・延長実績を確認できます。</p>
+    </div>
+
+    <div class="toolbar">
+      <div class="field">
+        <label for="annualReportYear">年度</label>
+        <div class="select-wrap">
+          <select id="annualReportYear">
+            <option value="2026">令和8年度（2026年度）</option>
+          </select>
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+
+      <button type="button" class="refresh-button" id="loadAnnualReport">
+        <i data-lucide="refresh-cw"></i>
+        集計を更新
+      </button>
+    </div>
+
+    <div class="section-heading">
+      <h2>年度集計表</h2>
+      <span>全拠点・全対象者区分</span>
+    </div>
+
+    <div class="panel" style="padding:16px;">
+      <button type="button" class="refresh-button" id="copyAnnualReport">
+        <i data-lucide="copy"></i>
+        集計表をコピー
+      </button>
+
+      <div id="annualReportStatus" class="timeline-note">
+        集計データを読み込んでいません。
+      </div>
+
+      <div class="table-wrap" style="margin-top:14px;">
+        <table class="inventory-table" id="annualReportTable">
+          <tbody>
+            <tr>
+              <td>集計データを読み込んでください。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   <div class="footer" id="footer">
     福祉用具無料貸出事業 管理システム
   </div>
@@ -1755,6 +1879,18 @@ let repairSubmitting = false;
     // タブ切り替え
     const tabButtons = Array.from(document.querySelectorAll("[data-tab-target]"));
     const tabPages = Array.from(document.querySelectorAll("[data-tab-page]"));
+        // 集計ページのボタン
+    document.getElementById("loadMonthlyReport")
+      .addEventListener("click", () => loadReportData("monthly"));
+
+    document.getElementById("loadAnnualReport")
+      .addEventListener("click", () => loadReportData("annual"));
+
+    document.getElementById("copyMonthlyReport")
+      .addEventListener("click", () => copyReportTable("monthlyReportTable"));
+
+    document.getElementById("copyAnnualReport")
+      .addEventListener("click", () => copyReportTable("annualReportTable"));
     tabButtons.forEach(tab => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
@@ -3803,7 +3939,395 @@ function showSkeleton() {
     });
     body.replaceChildren(grid);
   }
+  // =====================================
+  // 集計レポート
+  // =====================================
 
+  let monthlyReportData = null;
+  let annualReportData = null;
+
+  // 集計データの取得
+  function loadReportData(type) {
+    const isMonthly = type === "monthly";
+
+    const yearElement = document.getElementById(
+      isMonthly ? "monthlyReportYear" : "annualReportYear"
+    );
+
+    const year = Number(yearElement.value);
+    const month = isMonthly
+      ? Number(document.getElementById("monthlyReportMonth").value)
+      : 0;
+
+    const statusElement = document.getElementById(
+      isMonthly ? "monthlyReportStatus" : "annualReportStatus"
+    );
+
+    statusElement.textContent = "集計データを取得しています。";
+
+    callApi(
+      {
+        action: "reportSummary",
+        fiscalYear: year,
+        month: month
+      },
+      data => {
+        if (!data || data.success !== true) {
+          statusElement.textContent =
+            "集計データの取得に失敗しました。";
+          return;
+        }
+
+        if (isMonthly) {
+          monthlyReportData = data;
+          renderReportTable(
+            "monthlyReportTable",
+            data,
+            "monthly"
+          );
+        } else {
+          annualReportData = data;
+          renderReportTable(
+            "annualReportTable",
+            data,
+            "annual"
+          );
+        }
+
+        statusElement.textContent =
+          "最終取得：" + new Date().toLocaleString("ja-JP");
+      },
+      () => {
+        statusElement.textContent =
+          "通信エラーが発生しました。";
+      }
+    );
+  }
+
+  
+  // =====================================
+  // 集計表の描画
+  // =====================================
+
+  function renderReportTable(tableId, data, type) {
+    const oldTable = document.getElementById(tableId);
+
+    const branches = data.branches || [];
+    const items = data.items || [];
+    const categories = data.categories || [];
+
+    const mainData = type === "monthly"
+      ? data.monthly || []
+      : data.annual || [];
+
+    const cumulativeData = type === "monthly"
+      ? data.cumulative || []
+      : [];
+
+    const newTable = document.createElement("table");
+    newTable.id = tableId;
+    newTable.className = "inventory-table";
+    newTable.style.minWidth = "1800px";
+
+    // 表タイトル
+    const caption = document.createElement("caption");
+    caption.textContent =
+      "令和" + (data.fiscalYear - 2018) +
+      "年度 福祉用具無料貸出事業 " +
+      (type === "monthly"
+        ? data.month + "月分"
+        : "年度集計");
+
+    caption.style.padding = "12px";
+    caption.style.fontWeight = "700";
+    caption.style.textAlign = "left";
+    newTable.appendChild(caption);
+
+    // -------------------------------------
+    // ヘッダー
+    // -------------------------------------
+
+    const thead = document.createElement("thead");
+
+    const headerRow = document.createElement("tr");
+
+    ["福祉用具", "拠点・区分"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      th.rowSpan = 2;
+      headerRow.appendChild(th);
+    });
+
+    categories.forEach(category => {
+      const th = document.createElement("th");
+      th.colSpan = 2;
+      th.textContent = category.name;
+      headerRow.appendChild(th);
+    });
+
+    const totalHeader = document.createElement("th");
+    totalHeader.colSpan = 2;
+    totalHeader.textContent = "合計";
+    headerRow.appendChild(totalHeader);
+
+    if (type === "monthly") {
+      const cumulativeHeader = document.createElement("th");
+      cumulativeHeader.colSpan = 2;
+      cumulativeHeader.textContent = "年度累計";
+      headerRow.appendChild(cumulativeHeader);
+    }
+
+    thead.appendChild(headerRow);
+
+    const subHeader = document.createElement("tr");
+
+    for (
+      let i = 0;
+      i < categories.length + 1 + (type === "monthly" ? 1 : 0);
+      i++
+    ) {
+      ["件数", "貸出点数"].forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        subHeader.appendChild(th);
+      });
+    }
+
+    thead.appendChild(subHeader);
+    newTable.appendChild(thead);
+
+    // -------------------------------------
+    // 集計用関数
+    // -------------------------------------
+
+    function getValues(source, itemId, branchId, categoryId, isExtension) {
+      const records = source.filter(record =>
+        (itemId === null || record.itemId === itemId) &&
+        (branchId === null || record.branchId === branchId) &&
+        (categoryId === null || record.categoryId === categoryId)
+      );
+
+      const countKey = isExtension ? "extensionCount" : "loanCount";
+      const pointsKey = isExtension ? "extensionPoints" : "loanPoints";
+
+      return {
+        count: records.reduce(
+          (sum, record) => sum + Number(record[countKey] || 0),
+          0
+        ),
+        points: records.reduce(
+          (sum, record) => sum + Number(record[pointsKey] || 0),
+          0
+        )
+      };
+    }
+
+    // -------------------------------------
+    // 1行分の集計データを作成
+    // -------------------------------------
+
+    function addDataRow(itemName, branchName, itemId, branchId, isExtension) {
+      const tr = document.createElement("tr");
+
+      const itemCell = document.createElement("td");
+      itemCell.textContent = itemName;
+      tr.appendChild(itemCell);
+
+      const branchCell = document.createElement("td");
+      branchCell.textContent = branchName;
+      tr.appendChild(branchCell);
+
+      let rowTotalCount = 0;
+      let rowTotalPoints = 0;
+      let cumulativeCount = 0;
+      let cumulativePoints = 0;
+
+      categories.forEach(category => {
+        const values = getValues(
+          mainData,
+          itemId,
+          branchId,
+          category.id,
+          isExtension
+        );
+
+        rowTotalCount += values.count;
+        rowTotalPoints += values.points;
+
+        const countCell = document.createElement("td");
+        countCell.textContent = values.count;
+        tr.appendChild(countCell);
+
+        const pointsCell = document.createElement("td");
+        pointsCell.textContent = values.points;
+        tr.appendChild(pointsCell);
+
+        // 月別集計の年度累計
+        if (type === "monthly") {
+          const cumulativeValues = getValues(
+            cumulativeData,
+            itemId,
+            branchId,
+            category.id,
+            isExtension
+          );
+
+          cumulativeCount += cumulativeValues.count;
+          cumulativePoints += cumulativeValues.points;
+        }
+      });
+
+      // 合計件数
+      const totalCountCell = document.createElement("td");
+      totalCountCell.textContent = rowTotalCount;
+      tr.appendChild(totalCountCell);
+
+      // 合計点数
+      const totalPointsCell = document.createElement("td");
+      totalPointsCell.textContent = rowTotalPoints;
+      tr.appendChild(totalPointsCell);
+
+      // 年度累計
+      if (type === "monthly") {
+        const cumulativeCountCell = document.createElement("td");
+        cumulativeCountCell.textContent = cumulativeCount;
+        tr.appendChild(cumulativeCountCell);
+
+        const cumulativePointsCell = document.createElement("td");
+        cumulativePointsCell.textContent = cumulativePoints;
+        tr.appendChild(cumulativePointsCell);
+      }
+
+      // 合計行を見分けやすくする
+      if (branchName === "合計" || branchName === "延長合計") {
+        tr.style.fontWeight = "700";
+        tr.style.background = "#f0f4f7";
+      }
+
+      if (branchName === "総合計" || branchName === "延長総合計") {
+        tr.style.fontWeight = "700";
+        tr.style.background = "#e5edf3";
+      }
+
+      newTbody.appendChild(tr);
+    }
+
+    // -------------------------------------
+    // 表本体
+    // -------------------------------------
+
+    const newTbody = document.createElement("tbody");
+
+    // 物品ごとの集計
+    items.forEach(item => {
+
+      // 拠点別の貸出・延長
+      branches.forEach(branch => {
+        addDataRow(
+          item.name,
+          branch.name,
+          item.id,
+          branch.id,
+          false
+        );
+
+        addDataRow(
+          item.name,
+          branch.name + " 延長",
+          item.id,
+          branch.id,
+          true
+        );
+      });
+
+      // 物品ごとの貸出合計
+      addDataRow(
+        item.name,
+        "合計",
+        item.id,
+        null,
+        false
+      );
+
+      // 物品ごとの延長合計
+      addDataRow(
+        item.name,
+        "延長合計",
+        item.id,
+        null,
+        true
+      );
+    });
+
+    // -------------------------------------
+    // 全物品の拠点別集計
+    // -------------------------------------
+
+    branches.forEach(branch => {
+      addDataRow(
+        "全物品合計",
+        branch.name,
+        null,
+        branch.id,
+        false
+      );
+
+      addDataRow(
+        "全物品合計",
+        branch.name + " 延長",
+        null,
+        branch.id,
+        true
+      );
+    });
+
+    // -------------------------------------
+    // 全物品の総合計
+    // -------------------------------------
+
+    addDataRow(
+      "全物品合計",
+      "総合計",
+      null,
+      null,
+      false
+    );
+
+    addDataRow(
+      "全物品合計",
+      "延長総合計",
+      null,
+      null,
+      true
+    );
+
+    newTable.appendChild(newTbody);
+
+    // 古い表と差し替え
+    oldTable.replaceWith(newTable);
+  }
+
+  // 集計表をタブ区切りでコピー
+  function copyReportTable(tableId) {
+    const table = document.getElementById(tableId);
+
+    if (!table) {
+      showToast("コピーする集計表がありません。");
+      return;
+    }
+
+    const rows = Array.from(table.querySelectorAll("tr"));
+
+    const text = rows.map(row =>
+      Array.from(row.querySelectorAll("th, td"))
+        .map(cell => cell.innerText.replace(/\t|\n/g, " "))
+        .join("\t")
+    ).join("\n");
+
+    navigator.clipboard.writeText(text)
+      .then(() => showToast("集計表をコピーしました。"))
+      .catch(() => showToast("コピーできませんでした。"));
+  }
   function showError(message) {
 
     const status = document.getElementById("status");
