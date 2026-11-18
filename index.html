@@ -1101,7 +1101,7 @@
   <section id="loanRegistration" class="loan-section active" data-tab-page="loan">
     <div class="section-heading">
       <h2>貸出登録</h2>
-      <span id="loanAssetCount">利用可能な個体を読み込み中</span>
+      <span id="loanAssetCount">利用可能な物品を読み込み中</span>
     </div>
 
     <div class="panel loan-panel">
@@ -1125,11 +1125,11 @@
       <div class="loan-list-heading">
         <div>
           <h3>貸し出す福祉用具</h3>
-          <p>貸し出す個体にチェックし、それぞれ返却予定日を指定してください。</p>
+          <p>貸し出す物品にチェックし、それぞれ返却予定日を指定してください。</p>
         </div>
         <button type="button" class="refresh-button" id="refreshLoanAssets">
           <i data-lucide="refresh-cw"></i>
-          個体一覧を更新
+          物品一覧を更新
         </button>
       </div>
 
@@ -1144,7 +1144,7 @@
             </tr>
           </thead>
           <tbody id="loanAssetBody">
-            <tr><td colspan="4">個体情報を読み込んでいます。</td></tr>
+            <tr><td colspan="4">物品情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -1169,7 +1169,7 @@
   <section id="returnRegistration" class="return-section" data-tab-page="return">
     <div class="section-heading">
       <h2>返却登録</h2>
-      <span id="returnAssetCount">貸出中の個体を読み込み中</span>
+      <span id="returnAssetCount">貸出中の物品を読み込み中</span>
     </div>
 
     <div class="panel loan-panel">
@@ -1183,7 +1183,7 @@
       <div class="loan-list-heading">
         <div>
           <h3>返却する福祉用具</h3>
-          <p>返却する個体を選び、返却区分を指定してください。整備が必要な個体は整備中として管理します。</p>
+          <p>返却する物品を選び、返却区分を指定してください。整備が必要な物品は整備中として管理します。</p>
         </div>
         <button type="button" class="refresh-button" id="refreshReturnAssets">
           <i data-lucide="refresh-cw"></i>
@@ -1204,7 +1204,7 @@
             </tr>
           </thead>
           <tbody id="returnAssetBody">
-            <tr><td colspan="6">貸出中の個体情報を読み込んでいます。</td></tr>
+            <tr><td colspan="6">貸出中の物品情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -1216,7 +1216,7 @@
       </div>
 
       <div class="loan-submit-row">
-        <span class="loan-help">整備が必要な個体は、利用可能数に戻さず整備中として登録します。</span>
+        <span class="loan-help">整備が必要な物品は、利用可能数に戻さず整備中として登録します。</span>
         <button type="button" class="loan-submit-button" id="registerReturnButton" disabled>
           <i data-lucide="clipboard-check"></i>
           返却を登録
@@ -1229,7 +1229,7 @@
   <section id="extensionRegistration" class="extension-section" data-tab-page="extension">
     <div class="section-heading">
       <h2>延長受付</h2>
-      <span id="extensionAssetCount">貸出中の個体を読み込み中</span>
+      <span id="extensionAssetCount">貸出中の物品を読み込み中</span>
     </div>
 
     <div class="panel loan-panel">
@@ -1269,7 +1269,7 @@
             </tr>
           </thead>
           <tbody id="extensionAssetBody">
-            <tr><td colspan="5">貸出中の個体情報を読み込んでいます。</td></tr>
+            <tr><td colspan="5">貸出中の物品情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -1411,16 +1411,16 @@
     </div>
   </section>
 
-  <!-- 個体管理 -->
+  <!-- 物品管理 -->
   <section id="individualManagement" data-tab-page="inventory" style="margin-top: 28px;">
     <div class="section-heading">
-      <h2>個体管理</h2>
+      <h2>物品管理</h2>
       <span id="individualCount">0点</span>
     </div>
 
     <div class="panel" style="padding: 20px;">
 
-      <h3 style="margin-top: 0;">新しい個体を登録</h3>
+      <h3 style="margin-top: 0;">新しい物品を登録</h3>
 
       <div class="field" style="margin-bottom: 16px;">
         <label for="individualItemSelect">福祉用具</label>
@@ -1463,14 +1463,14 @@
           id="registerIndividualButton"
           disabled
         >
-          個体を登録
+          物品を登録
         </button>
       </div>
 
     </div>
 
     <div class="section-heading" style="margin-top:24px;">
-      <h2>登録済み個体一覧</h2>
+      <h2>登録済み物品一覧</h2>
       <span>この拠点の登録情報</span>
     </div>
 
@@ -1487,7 +1487,7 @@
           <tbody id="individualBody">
             <tr>
               <td colspan="3">
-                個体情報を読み込んでいます。
+                物品情報を読み込んでいます。
               </td>
             </tr>
           </tbody>
@@ -1866,7 +1866,7 @@ document.getElementById("closeStockConfirm")
 document.getElementById("finishStockConfirm")
   .addEventListener("click", saveStock);
 
-// 個体登録ボタン
+// 物品登録ボタン
 document.getElementById("registerIndividualButton")
   .addEventListener("click", registerIndividual);
 
@@ -2035,10 +2035,10 @@ loadMasterData();
         // 在庫再読み込みは有効化
 refreshButton.disabled = false;
 
-// 個体登録ボタンを有効化
+// 物品登録ボタンを有効化
 document.getElementById("registerIndividualButton").disabled = false;
 
-// 個体登録用の物品選択肢を作成
+// 物品登録用の物品選択肢を作成
 const itemSelect =
   document.getElementById("individualItemSelect");
         itemSelect.replaceChildren();
@@ -2055,7 +2055,7 @@ const itemSelect =
           itemSelect.appendChild(option);
         });
 
-        // 指定された拠点の在庫・個体情報を取得
+        // 指定された拠点の在庫・物品情報を取得
 loadInventory(currentBranchId);
       }
     );
@@ -2093,7 +2093,7 @@ loadInventory(currentBranchId);
 
                 renderInventory(data);
 
-        // 登録済み個体一覧を取得
+        // 登録済み物品一覧を取得
         loadIndividualAssets(branchId);
         // 延長受付用の貸出中物品を取得
         loadExtensionAssets(branchId);
@@ -2111,7 +2111,7 @@ loadInventory(currentBranchId);
 
   }
   // =====================================
-  // 登録済み個体一覧の取得・表示
+  // 登録済み物品一覧の取得・表示
   // =====================================
 
   function loadIndividualAssets(branchId) {
@@ -2132,7 +2132,7 @@ loadInventory(currentBranchId);
         body.replaceChildren();
 
         if (!data || data.success !== true) {
-          body.textContent = "個体情報を取得できませんでした。";
+          body.textContent = "物品情報を取得できませんでした。";
           count.textContent = "取得失敗";
           return;
         }
@@ -2147,7 +2147,7 @@ loadInventory(currentBranchId);
           const cell = document.createElement("td");
 
           cell.colSpan = 3;
-          cell.textContent = "登録済みの個体はありません。";
+          cell.textContent = "登録済みの物品はありません。";
 
           row.appendChild(cell);
           body.appendChild(row);
@@ -2184,7 +2184,7 @@ loadInventory(currentBranchId);
   }
 
 // =====================================
-// 貸出可能な個体一覧の描画
+// 貸出可能な物品一覧の描画
 // =====================================
 
 function renderLoanAssets(assets) {
@@ -2203,7 +2203,7 @@ function renderLoanAssets(assets) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 4;
-    cell.textContent = "現在、貸出可能な個体はありません。";
+    cell.textContent = "現在、貸出可能な物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -2324,7 +2324,7 @@ async function registerLoan() {
   ).filter(row => row.querySelector(".loan-asset-check:checked"));
 
   if (selectedRows.length === 0) {
-    showToast("貸し出す個体を選択してください。");
+    showToast("貸し出す物品を選択してください。");
     return;
   }
 
@@ -2334,7 +2334,7 @@ async function registerLoan() {
     const dueDate = row.querySelector(".loan-due-date").value;
 
     if (!dueDate) {
-      showToast("選択した個体すべてに返却予定日を入力してください。");
+      showToast("選択した物品すべてに返却予定日を入力してください。");
       row.querySelector(".loan-due-date").focus();
       return;
     }
@@ -2370,7 +2370,7 @@ async function registerLoan() {
 
     button.textContent = "登録結果を確認中...";
 
-    // no-corsの応答本文は読めないため、個体状態の更新で登録結果を確認
+    // no-corsの応答本文は読めないため、物品状態の更新で登録結果を確認
     callApi(
       { action: "individuals", branchId: currentBranchId },
       data => {
@@ -2378,7 +2378,7 @@ async function registerLoan() {
         button.textContent = "貸出を登録";
 
         if (!data || data.success !== true) {
-          showError("貸出後の個体状態を確認できませんでした。個体一覧を再読み込みしてください。");
+          showError("貸出後の物品状態を確認できませんでした。物品一覧を再読み込みしてください。");
           button.disabled = false;
           return;
         }
@@ -2387,7 +2387,7 @@ async function registerLoan() {
         const allLoaned = items.every(item => statusById.get(item.individualId) === "貸出中");
 
         if (!allLoaned) {
-          showError("貸出登録を確認できませんでした。入力内容と個体の状態を確認してください。");
+          showError("貸出登録を確認できませんでした。入力内容と物品の状態を確認してください。");
           button.disabled = false;
           return;
         }
@@ -2419,7 +2419,7 @@ async function registerLoan() {
 
 
 // =====================================
-// 返却対象個体一覧の描画
+// 返却対象物品一覧の描画
 // =====================================
 
 function renderReturnAssets(assets) {
@@ -2441,7 +2441,7 @@ function renderReturnAssets(assets) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 6;
-    cell.textContent = "現在、返却対象の個体はありません。";
+    cell.textContent = "現在、返却対象の物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -2540,7 +2540,7 @@ async function registerReturn() {
   );
 
   if (selected.length === 0) {
-    showToast("返却する個体を選択してください。");
+    showToast("返却する物品を選択してください。");
     return;
   }
 
@@ -2581,7 +2581,7 @@ async function registerReturn() {
 
     button.textContent = "返却結果を確認中...";
 
-    // 個体状態が利用可能に戻ったことを確認
+    // 物品状態が利用可能に戻ったことを確認
     callApi(
       { action: "individuals", branchId: currentBranchId },
       data => {
@@ -2590,7 +2590,7 @@ async function registerReturn() {
 
         if (!data || data.success !== true) {
           button.disabled = false;
-          showError("返却後の個体状態を確認できませんでした。個体一覧を更新してください。");
+          showError("返却後の物品状態を確認できませんでした。物品一覧を更新してください。");
           return;
         }
 
@@ -2605,7 +2605,7 @@ async function registerReturn() {
 
         if (!allReturned) {
           button.disabled = false;
-          showError("返却登録を確認できませんでした。個体の状態を確認してください。");
+          showError("返却登録を確認できませんでした。物品の状態を確認してください。");
           return;
         }
 
@@ -2686,7 +2686,7 @@ function renderExtensionAssets(items) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 5;
-    cell.textContent = "現在、延長できる貸出中の個体はありません。";
+    cell.textContent = "現在、延長できる貸出中の物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -2773,7 +2773,7 @@ async function registerExtension() {
   );
 
   if (selected.length === 0) {
-    showToast("延長する個体を選択してください。");
+    showToast("延長する物品を選択してください。");
     return;
   }
 
@@ -2906,10 +2906,10 @@ function registerIndividual() {
   // ボタンを元に戻す
   function resetButton() {
     button.disabled = false;
-    button.textContent = "個体を登録";
+    button.textContent = "物品を登録";
   }
 
-  // まず登録済み個体を取得
+  // まず登録済み物品を取得
   callApi(
     {
       action: "individuals",
@@ -2919,7 +2919,7 @@ function registerIndividual() {
 
       if (!data || data.success !== true) {
         resetButton();
-        showError("登録済み個体の確認に失敗しました。");
+        showError("登録済み物品の確認に失敗しました。");
         return;
       }
 
@@ -2942,7 +2942,7 @@ function registerIndividual() {
         return;
       }
 
-      // 登録前の個体IDを保存
+      // 登録前の物品IDを保存
       const existingIds = new Set(
         existingAssets.map(asset => asset.id)
       );
@@ -2969,7 +2969,7 @@ function registerIndividual() {
 
         button.textContent = "登録結果を確認中...";
 
-        // 登録後に個体一覧を再取得
+        // 登録後に物品一覧を再取得
         callApi(
           {
             action: "individuals",
@@ -2981,7 +2981,7 @@ function registerIndividual() {
 
             if (!result || result.success !== true) {
               showError(
-                "登録後の確認に失敗しました。個体一覧を再読み込みしてください。"
+                "登録後の確認に失敗しました。物品一覧を再読み込みしてください。"
               );
               return;
             }
@@ -2993,10 +2993,10 @@ function registerIndividual() {
                 !existingIds.has(asset.id)
             );
 
-            // 登録前になかった個体IDが確認できなければ失敗
+            // 登録前になかった物品IDが確認できなければ失敗
             if (!newAsset) {
               showError(
-                "新しい個体の登録を確認できませんでした。登録状況を確認してください。"
+                "新しい物品の登録を確認できませんでした。登録状況を確認してください。"
               );
               return;
             }
@@ -3008,7 +3008,7 @@ function registerIndividual() {
 
             loadInventory(currentBranchId);
 
-            showToast("個体を登録しました。");
+            showToast("物品を登録しました。");
 
           }
         );
