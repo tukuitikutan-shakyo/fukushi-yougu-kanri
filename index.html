@@ -623,6 +623,43 @@
       }
     }
 
+    /* 延長受付 */
+    .extension-section {
+      margin: 0 0 28px;
+    }
+
+    .extension-assets-table {
+      min-width: 760px;
+    }
+
+    .extension-asset-check {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
+    .extension-current-date {
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .extension-new-date {
+      min-width: 155px;
+      min-height: 38px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font: inherit;
+      color: var(--text);
+    }
+
+    .extension-new-date:disabled {
+      background: #f3f5f7;
+      color: #9aa5af;
+      cursor: not-allowed;
+    }
+
     /* 返却登録 */
     .return-section {
       margin: 0 0 28px;
@@ -827,7 +864,7 @@
       </div>
       <span>福祉用具貸出管理</span>
       <small style="font-size:10px; color:var(--muted); font-weight:500;">
-  update11181350
+  update11181450
 </small>
     </div>
     
@@ -851,6 +888,8 @@
       onclick="closeDrawer()">貸出登録</a>
     <a class="drawer-link" href="#returnRegistration"
       onclick="closeDrawer()">返却登録</a>
+    <a class="drawer-link" href="#extensionRegistration"
+      onclick="closeDrawer()">延長受付</a>
     <a class="drawer-link" href="#inventory"
       onclick="closeDrawer()">在庫管理</a>
     <a class="drawer-link" href="#summary"
@@ -892,7 +931,7 @@
   <section id="loanRegistration" class="loan-section">
     <div class="section-heading">
       <h2>貸出登録</h2>
-      <span id="loanAssetCount">利用可能な物品を読み込み中</span>
+      <span id="loanAssetCount">利用可能な個体を読み込み中</span>
     </div>
 
     <div class="panel loan-panel">
@@ -916,11 +955,11 @@
       <div class="loan-list-heading">
         <div>
           <h3>貸し出す福祉用具</h3>
-          <p>貸し出す物品にチェックし、それぞれ返却予定日を指定してください。</p>
+          <p>貸し出す個体にチェックし、それぞれ返却予定日を指定してください。</p>
         </div>
         <button type="button" class="refresh-button" id="refreshLoanAssets">
           <i data-lucide="refresh-cw"></i>
-          物品一覧を更新
+          個体一覧を更新
         </button>
       </div>
 
@@ -935,7 +974,7 @@
             </tr>
           </thead>
           <tbody id="loanAssetBody">
-            <tr><td colspan="4">物品情報を読み込んでいます。</td></tr>
+            <tr><td colspan="4">個体情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -960,7 +999,7 @@
   <section id="returnRegistration" class="return-section">
     <div class="section-heading">
       <h2>返却登録</h2>
-      <span id="returnAssetCount">貸出中の物品を読み込み中</span>
+      <span id="returnAssetCount">貸出中の個体を読み込み中</span>
     </div>
 
     <div class="panel loan-panel">
@@ -974,7 +1013,7 @@
       <div class="loan-list-heading">
         <div>
           <h3>返却する福祉用具</h3>
-          <p>返却された物品にチェックを入れてください。通常返却として利用可能に戻します。</p>
+          <p>返却された個体にチェックを入れてください。通常返却として利用可能に戻します。</p>
         </div>
         <button type="button" class="refresh-button" id="refreshReturnAssets">
           <i data-lucide="refresh-cw"></i>
@@ -993,7 +1032,7 @@
             </tr>
           </thead>
           <tbody id="returnAssetBody">
-            <tr><td colspan="4">貸出中の物品情報を読み込んでいます。</td></tr>
+            <tr><td colspan="4">貸出中の個体情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -1009,6 +1048,71 @@
         <button type="button" class="loan-submit-button" id="registerReturnButton" disabled>
           <i data-lucide="clipboard-check"></i>
           返却を登録
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 延長受付 -->
+  <section id="extensionRegistration" class="extension-section">
+    <div class="section-heading">
+      <h2>延長受付</h2>
+      <span id="extensionAssetCount">貸出中の個体を読み込み中</span>
+    </div>
+
+    <div class="panel loan-panel">
+      <div class="loan-form-grid">
+        <div class="field">
+          <label for="extensionDate">受付日</label>
+          <input id="extensionDate" class="loan-input" type="date" required>
+        </div>
+        <div class="field">
+          <label>受付方法</label>
+          <div class="loan-input" style="display:flex;align-items:center;background:#f8fafb;">
+            電話（1回の電話を1件として受付）
+          </div>
+        </div>
+      </div>
+
+      <div class="loan-list-heading">
+        <div>
+          <h3>延長する福祉用具</h3>
+          <p>対象を選択し、物品ごとに変更後の返却予定日を指定してください。</p>
+        </div>
+        <button type="button" class="refresh-button" id="refreshExtensionAssets">
+          <i data-lucide="refresh-cw"></i>
+          貸出中一覧を更新
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="inventory-table extension-assets-table">
+          <thead>
+            <tr>
+              <th>選択</th>
+              <th>福祉用具</th>
+              <th>識別ネーム</th>
+              <th>現在の返却予定日</th>
+              <th>変更後の返却予定日</th>
+            </tr>
+          </thead>
+          <tbody id="extensionAssetBody">
+            <tr><td colspan="5">貸出中の個体情報を読み込んでいます。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="loan-note-field">
+        <label for="extensionNote">備考（任意）</label>
+        <input id="extensionNote" class="loan-input" type="text" maxlength="500"
+          placeholder="延長理由・受付時の連絡事項など">
+      </div>
+
+      <div class="loan-submit-row">
+        <span class="loan-help">受付1件に複数の福祉用具をまとめて登録します。</span>
+        <button type="button" class="loan-submit-button" id="registerExtensionButton" disabled>
+          <i data-lucide="calendar-clock"></i>
+          延長を登録
         </button>
       </div>
     </div>
@@ -1133,16 +1237,16 @@
     </div>
   </section>
 
-  <!-- 物品管理 -->
+  <!-- 個体管理 -->
   <section id="individualManagement" style="margin-top: 28px;">
     <div class="section-heading">
-      <h2>物品管理</h2>
+      <h2>個体管理</h2>
       <span id="individualCount">0点</span>
     </div>
 
     <div class="panel" style="padding: 20px;">
 
-      <h3 style="margin-top: 0;">新しい物品を登録</h3>
+      <h3 style="margin-top: 0;">新しい個体を登録</h3>
 
       <div class="field" style="margin-bottom: 16px;">
         <label for="individualItemSelect">福祉用具</label>
@@ -1185,14 +1289,14 @@
           id="registerIndividualButton"
           disabled
         >
-          物品を登録
+          個体を登録
         </button>
       </div>
 
     </div>
 
     <div class="section-heading" style="margin-top:24px;">
-      <h2>登録済み物品一覧</h2>
+      <h2>登録済み個体一覧</h2>
       <span>この拠点の登録情報</span>
     </div>
 
@@ -1209,7 +1313,7 @@
           <tbody id="individualBody">
             <tr>
               <td colspan="3">
-                物品情報を読み込んでいます。
+                個体情報を読み込んでいます。
               </td>
             </tr>
           </tbody>
@@ -1308,6 +1412,7 @@ let currentBranchName = "";
 let masterCategories = [];
 let loanSubmitting = false;
 let returnSubmitting = false;
+let extensionSubmitting = false;
 
   const branchSelect =
     document.getElementById("branchSelect");
@@ -1424,7 +1529,7 @@ document.getElementById("closeStockConfirm")
 document.getElementById("finishStockConfirm")
   .addEventListener("click", saveStock);
 
-// 物品登録ボタン
+// 個体登録ボタン
 document.getElementById("registerIndividualButton")
   .addEventListener("click", registerIndividual);
 
@@ -1441,6 +1546,12 @@ document.getElementById("refreshLoanAssets")
 
 document.getElementById("refreshReturnAssets")
   .addEventListener("click", () => loadIndividualAssets(currentBranchId));
+
+document.getElementById("registerExtensionButton")
+  .addEventListener("click", registerExtension);
+
+document.getElementById("refreshExtensionAssets")
+  .addEventListener("click", () => loadExtensionAssets(currentBranchId));
 
 document.getElementById("loanDate")
   .addEventListener("change", () => {
@@ -1563,14 +1674,18 @@ loadMasterData();
           now.getFullYear() + "-" +
           String(now.getMonth() + 1).padStart(2, "0") + "-" +
           String(now.getDate()).padStart(2, "0");
+        document.getElementById("extensionDate").value =
+          now.getFullYear() + "-" +
+          String(now.getMonth() + 1).padStart(2, "0") + "-" +
+          String(now.getDate()).padStart(2, "0");
 
         // 在庫再読み込みは有効化
 refreshButton.disabled = false;
 
-// 物品登録ボタンを有効化
+// 個体登録ボタンを有効化
 document.getElementById("registerIndividualButton").disabled = false;
 
-// 物品登録用の物品選択肢を作成
+// 個体登録用の物品選択肢を作成
 const itemSelect =
   document.getElementById("individualItemSelect");
         itemSelect.replaceChildren();
@@ -1625,8 +1740,10 @@ const itemSelect =
 
                 renderInventory(data);
 
-        // 登録済み物品一覧を取得
+        // 登録済み個体一覧を取得
         loadIndividualAssets(branchId);
+        // 延長受付用の貸出中物品を取得
+        loadExtensionAssets(branchId);
 
         setConnection("接続中");
 
@@ -1643,7 +1760,7 @@ const itemSelect =
 
   }
   // =====================================
-  // 登録済み物品一覧の取得・表示
+  // 登録済み個体一覧の取得・表示
   // =====================================
 
   function loadIndividualAssets(branchId) {
@@ -1664,7 +1781,7 @@ const itemSelect =
         body.replaceChildren();
 
         if (!data || data.success !== true) {
-          body.textContent = "物品情報を取得できませんでした。";
+          body.textContent = "個体情報を取得できませんでした。";
           count.textContent = "取得失敗";
           return;
         }
@@ -1679,7 +1796,7 @@ const itemSelect =
           const cell = document.createElement("td");
 
           cell.colSpan = 3;
-          cell.textContent = "登録済みの物品はありません。";
+          cell.textContent = "登録済みの個体はありません。";
 
           row.appendChild(cell);
           body.appendChild(row);
@@ -1716,7 +1833,7 @@ const itemSelect =
   }
 
 // =====================================
-// 貸出可能な物品一覧の描画
+// 貸出可能な個体一覧の描画
 // =====================================
 
 function renderLoanAssets(assets) {
@@ -1735,7 +1852,7 @@ function renderLoanAssets(assets) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 4;
-    cell.textContent = "現在、貸出可能な物品はありません。";
+    cell.textContent = "現在、貸出可能な個体はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -1808,7 +1925,7 @@ async function registerLoan() {
   ).filter(row => row.querySelector(".loan-asset-check:checked"));
 
   if (selectedRows.length === 0) {
-    showToast("貸し出す物品を選択してください。");
+    showToast("貸し出す個体を選択してください。");
     return;
   }
 
@@ -1818,7 +1935,7 @@ async function registerLoan() {
     const dueDate = row.querySelector(".loan-due-date").value;
 
     if (!dueDate) {
-      showToast("選択した物品すべてに返却予定日を入力してください。");
+      showToast("選択した個体すべてに返却予定日を入力してください。");
       row.querySelector(".loan-due-date").focus();
       return;
     }
@@ -1854,7 +1971,7 @@ async function registerLoan() {
 
     button.textContent = "登録結果を確認中...";
 
-    // no-corsの応答本文は読めないため、物品状態の更新で登録結果を確認
+    // no-corsの応答本文は読めないため、個体状態の更新で登録結果を確認
     callApi(
       { action: "individuals", branchId: currentBranchId },
       data => {
@@ -1862,7 +1979,7 @@ async function registerLoan() {
         button.textContent = "貸出を登録";
 
         if (!data || data.success !== true) {
-          showError("貸出後の物品状態を確認できませんでした。物品一覧を再読み込みしてください。");
+          showError("貸出後の個体状態を確認できませんでした。個体一覧を再読み込みしてください。");
           button.disabled = false;
           return;
         }
@@ -1871,7 +1988,7 @@ async function registerLoan() {
         const allLoaned = items.every(item => statusById.get(item.individualId) === "貸出中");
 
         if (!allLoaned) {
-          showError("貸出登録を確認できませんでした。入力内容と物品の状態を確認してください。");
+          showError("貸出登録を確認できませんでした。入力内容と個体の状態を確認してください。");
           button.disabled = false;
           return;
         }
@@ -1898,7 +2015,7 @@ async function registerLoan() {
 
 
 // =====================================
-// 返却中物品一覧の描画
+// 返却中個体一覧の描画
 // =====================================
 
 function renderReturnAssets(assets) {
@@ -1920,7 +2037,7 @@ function renderReturnAssets(assets) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 4;
-    cell.textContent = "現在、返却対象の物品はありません。";
+    cell.textContent = "現在、返却対象の個体はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -1981,7 +2098,7 @@ async function registerReturn() {
   );
 
   if (selected.length === 0) {
-    showToast("返却する物品を選択してください。");
+    showToast("返却する個体を選択してください。");
     return;
   }
 
@@ -2011,7 +2128,7 @@ async function registerReturn() {
 
     button.textContent = "返却結果を確認中...";
 
-    // 物品状態が利用可能に戻ったことを確認
+    // 個体状態が利用可能に戻ったことを確認
     callApi(
       { action: "individuals", branchId: currentBranchId },
       data => {
@@ -2020,7 +2137,7 @@ async function registerReturn() {
 
         if (!data || data.success !== true) {
           button.disabled = false;
-          showError("返却後の物品状態を確認できませんでした。物品一覧を更新してください。");
+          showError("返却後の個体状態を確認できませんでした。個体一覧を更新してください。");
           return;
         }
 
@@ -2032,7 +2149,7 @@ async function registerReturn() {
 
         if (!allReturned) {
           button.disabled = false;
-          showError("返却登録を確認できませんでした。物品の状態を確認してください。");
+          showError("返却登録を確認できませんでした。個体の状態を確認してください。");
           return;
         }
 
@@ -2058,7 +2175,239 @@ async function registerReturn() {
 
 
 // =====================================
-// 物品登録
+// 延長対象一覧の取得
+// =====================================
+
+function loadExtensionAssets(branchId) {
+  if (!branchId) return;
+
+  callApi(
+    { action: "loanedItems", branchId: branchId },
+    data => {
+      if (!data || data.success !== true) {
+        const body = document.getElementById("extensionAssetBody");
+        body.replaceChildren();
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 5;
+        cell.textContent = data?.message || "延長対象を取得できませんでした。";
+        row.appendChild(cell);
+        body.appendChild(row);
+        document.getElementById("extensionAssetCount").textContent = "取得失敗";
+        document.getElementById("registerExtensionButton").disabled = true;
+        return;
+      }
+      renderExtensionAssets(Array.isArray(data.items) ? data.items : []);
+    },
+    message => {
+      showError("延長対象の取得に失敗しました。" + message);
+    }
+  );
+}
+
+
+// =====================================
+// 延長対象一覧の描画
+// =====================================
+
+function renderExtensionAssets(items) {
+  const body = document.getElementById("extensionAssetBody");
+  const count = document.getElementById("extensionAssetCount");
+  const button = document.getElementById("registerExtensionButton");
+
+  body.replaceChildren();
+  count.textContent = "延長対象 " + items.length + "点";
+  button.disabled = items.length === 0 || extensionSubmitting;
+
+  if (items.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 5;
+    cell.textContent = "現在、延長できる貸出中の個体はありません。";
+    row.appendChild(cell);
+    body.appendChild(row);
+    return;
+  }
+
+  items.forEach(item => {
+    const row = document.createElement("tr");
+
+    const selectCell = document.createElement("td");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "extension-asset-check";
+    checkbox.value = item.loanItemId;
+    checkbox.dataset.individualId = item.individualId;
+    checkbox.setAttribute("aria-label", item.itemName + " " + item.identifier + "を延長する");
+    selectCell.appendChild(checkbox);
+
+    const itemCell = document.createElement("td");
+    itemCell.textContent = item.itemName;
+
+    const identifierCell = document.createElement("td");
+    identifierCell.textContent = item.identifier;
+
+    const currentDateCell = document.createElement("td");
+    currentDateCell.className = "extension-current-date";
+    currentDateCell.textContent = item.dueDate || "未設定";
+
+    const newDateCell = document.createElement("td");
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.className = "extension-new-date";
+    dateInput.disabled = true;
+    dateInput.dataset.loanItemId = item.loanItemId;
+    dateInput.dataset.currentDueDate = item.dueDate || "";
+    dateInput.setAttribute("aria-label", item.identifier + "の変更後返却予定日");
+    dateInput.min = getNextDate(item.dueDate);
+    newDateCell.appendChild(dateInput);
+
+    checkbox.addEventListener("change", () => {
+      dateInput.disabled = !checkbox.checked;
+      if (!checkbox.checked) dateInput.value = "";
+    });
+
+    row.append(selectCell, itemCell, identifierCell, currentDateCell, newDateCell);
+    body.appendChild(row);
+  });
+}
+
+
+function getNextDate(dateText) {
+  if (!dateText) return "";
+  const parts = dateText.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return "";
+  const date = new Date(parts[0], parts[1] - 1, parts[2] + 1);
+  return date.getFullYear() + "-" +
+    String(date.getMonth() + 1).padStart(2, "0") + "-" +
+    String(date.getDate()).padStart(2, "0");
+}
+
+
+// =====================================
+// 延長受付登録
+// =====================================
+
+async function registerExtension() {
+  if (extensionSubmitting) return;
+
+  const button = document.getElementById("registerExtensionButton");
+  const receptionDate = document.getElementById("extensionDate").value;
+  const note = document.getElementById("extensionNote").value.trim();
+
+  if (!currentBranchId) {
+    showToast("拠点を特定できません。");
+    return;
+  }
+
+  if (!receptionDate) {
+    showToast("受付日を入力してください。");
+    document.getElementById("extensionDate").focus();
+    return;
+  }
+
+  const selected = Array.from(
+    document.querySelectorAll("#extensionAssetBody .extension-asset-check:checked")
+  );
+
+  if (selected.length === 0) {
+    showToast("延長する個体を選択してください。");
+    return;
+  }
+
+  const items = selected.map(checkbox => {
+    const input = document.querySelector(
+      '.extension-new-date[data-loan-item-id="' + CSS.escape(checkbox.value) + '"]'
+    );
+    return {
+      loanItemId: checkbox.value,
+      newDueDate: input ? input.value : "",
+      oldDueDate: input ? input.dataset.currentDueDate : ""
+    };
+  });
+
+  for (const item of items) {
+    if (!item.newDueDate) {
+      showToast("選択したすべての物品に変更後の返却予定日を入力してください。");
+      return;
+    }
+    if (item.newDueDate <= item.oldDueDate) {
+      showToast("変更後の返却予定日は現在の日付より後にしてください。");
+      return;
+    }
+    if (item.newDueDate < receptionDate) {
+      showToast("変更後の返却予定日は受付日以降にしてください。");
+      return;
+    }
+  }
+
+  extensionSubmitting = true;
+  button.disabled = true;
+  button.textContent = "延長登録中...";
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify({
+        action: "registerExtension",
+        receptionDate: receptionDate,
+        receptionMethod: "電話",
+        staffId: "",
+        note: note,
+        items: items.map(item => ({
+          loanItemId: item.loanItemId,
+          newDueDate: item.newDueDate
+        }))
+      })
+    });
+
+    button.textContent = "登録結果を確認中...";
+
+    callApi(
+      { action: "loanedItems", branchId: currentBranchId },
+      data => {
+        extensionSubmitting = false;
+        button.textContent = "延長を登録";
+
+        if (!data || data.success !== true || !Array.isArray(data.items)) {
+          button.disabled = false;
+          showError("延長後の返却予定日を確認できませんでした。一覧を更新してください。");
+          return;
+        }
+
+        const dueDates = new Map(data.items.map(item => [item.loanItemId, item.dueDate]));
+        const allExtended = items.every(item => dueDates.get(item.loanItemId) === item.newDueDate);
+
+        if (!allExtended) {
+          button.disabled = false;
+          showError("延長受付を確認できませんでした。返却予定日を確認してください。");
+          return;
+        }
+
+        document.getElementById("extensionNote").value = "";
+        loadExtensionAssets(currentBranchId);
+        showToast("電話1回分の延長受付（" + items.length + "点）を登録しました。");
+      },
+      message => {
+        extensionSubmitting = false;
+        button.disabled = false;
+        button.textContent = "延長を登録";
+        showError("延長後の確認に失敗しました。" + message);
+      }
+    );
+  } catch (error) {
+    extensionSubmitting = false;
+    button.disabled = false;
+    button.textContent = "延長を登録";
+    showError("延長受付の送信に失敗しました。通信状態を確認してください。");
+  }
+}
+
+
+// =====================================
+// 個体登録
 // =====================================
 
 function registerIndividual() {
@@ -2098,10 +2447,10 @@ function registerIndividual() {
   // ボタンを元に戻す
   function resetButton() {
     button.disabled = false;
-    button.textContent = "物品を登録";
+    button.textContent = "個体を登録";
   }
 
-  // まず登録済み物品を取得
+  // まず登録済み個体を取得
   callApi(
     {
       action: "individuals",
@@ -2111,7 +2460,7 @@ function registerIndividual() {
 
       if (!data || data.success !== true) {
         resetButton();
-        showError("登録済み物品の確認に失敗しました。");
+        showError("登録済み個体の確認に失敗しました。");
         return;
       }
 
@@ -2134,7 +2483,7 @@ function registerIndividual() {
         return;
       }
 
-      // 登録前の物品IDを保存
+      // 登録前の個体IDを保存
       const existingIds = new Set(
         existingAssets.map(asset => asset.id)
       );
@@ -2161,7 +2510,7 @@ function registerIndividual() {
 
         button.textContent = "登録結果を確認中...";
 
-        // 登録後に物品一覧を再取得
+        // 登録後に個体一覧を再取得
         callApi(
           {
             action: "individuals",
@@ -2173,7 +2522,7 @@ function registerIndividual() {
 
             if (!result || result.success !== true) {
               showError(
-                "登録後の確認に失敗しました。物品一覧を再読み込みしてください。"
+                "登録後の確認に失敗しました。個体一覧を再読み込みしてください。"
               );
               return;
             }
@@ -2185,10 +2534,10 @@ function registerIndividual() {
                 !existingIds.has(asset.id)
             );
 
-            // 登録前になかった物品IDが確認できなければ失敗
+            // 登録前になかった個体IDが確認できなければ失敗
             if (!newAsset) {
               showError(
-                "新しい物品の登録を確認できませんでした。登録状況を確認してください。"
+                "新しい個体の登録を確認できませんでした。登録状況を確認してください。"
               );
               return;
             }
@@ -2200,7 +2549,7 @@ function registerIndividual() {
 
             loadInventory(currentBranchId);
 
-            showToast("物品を登録しました。");
+            showToast("個体を登録しました。");
 
           }
         );
