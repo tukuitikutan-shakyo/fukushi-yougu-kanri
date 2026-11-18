@@ -1017,6 +1017,63 @@ let currentBranchName = "";
 
 
   // =====================================
+  // API通信（JSONP）
+  // =====================================
+
+  function callApi(params, onSuccess) {
+
+    const callbackName = "apiCallback_" + (++requestNumber);
+
+    const query = new URLSearchParams({
+      ...params,
+      callback: callbackName
+    }).toString();
+
+    const script = document.createElement("script");
+
+    let completed = false;
+
+    // 通信終了時の後片付け
+    function cleanup() {
+      if (completed) return;
+
+      completed = true;
+
+      clearTimeout(timeoutId);
+
+      script.remove();
+
+      delete window[callbackName];
+    }
+
+    // GASからの応答を受け取る
+    window[callbackName] = data => {
+      cleanup();
+
+      if (typeof onSuccess === "function") {
+        onSuccess(data);
+      }
+    };
+
+    // 通信エラー
+    script.onerror = () => {
+      cleanup();
+      showError("サーバーとの通信に失敗しました。");
+    };
+
+    // タイムアウト
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      showError("サーバーから応答がありません。時間をおいて再試行してください。");
+    }, 15000);
+
+    // GASへリクエスト
+    script.src = API_URL + "?" + query;
+
+    document.body.appendChild(script);
+  }
+
+  // =====================================
   // 初期化
   // =====================================
 
