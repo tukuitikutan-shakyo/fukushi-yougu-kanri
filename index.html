@@ -1035,6 +1035,7 @@
     <a class="drawer-link" href="#" onclick="switchPageTab('return'); closeDrawer(); return false;">返却登録</a>
     <a class="drawer-link" href="#" onclick="switchPageTab('extension'); closeDrawer(); return false;">延長受付</a>
     <a class="drawer-link" href="#" onclick="switchPageTab('repair'); closeDrawer(); return false;">整備管理</a>
+    <a class="drawer-link" href="#" onclick="switchPageTab('transfer'); closeDrawer(); return false;">拠点間移動</a>
     <a class="drawer-link" href="#" onclick="switchPageTab('inventory'); closeDrawer(); return false;">物品在庫一覧</a>
     <a class="drawer-link" href="#summary"
       onclick="closeDrawer()">在庫概要</a>
@@ -1059,6 +1060,7 @@
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="return">返却登録</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="extension">延長受付</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="repair">整備管理</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="transfer">拠点間移動</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="inventory">物品在庫一覧</button>
   </nav>
 
@@ -1314,6 +1316,42 @@
           整備完了を登録
         </button>
       </div>
+    </div>
+  </section>
+
+  <!-- 拠点間移動 -->
+  <section id="transferManagement" data-tab-page="transfer">
+    <div class="section-heading">
+      <h2>拠点間移動</h2>
+      <span>出庫登録・受領確認</span>
+    </div>
+
+    <div class="panel loan-panel" style="margin-bottom:24px;">
+      <div class="section-heading"><h3>移動元から出庫</h3><span id="transferCandidateCount">利用可能な個体を読み込み中</span></div>
+      <div class="loan-form-grid">
+        <div class="field">
+          <label for="transferDestination">移動先拠点</label>
+          <div class="select-wrap"><select id="transferDestination"><option value="">移動先を選択してください</option></select><i data-lucide="chevron-down"></i></div>
+        </div>
+        <div class="field">
+          <label for="transferDate">移動日</label>
+          <input id="transferDate" class="loan-input" type="date">
+        </div>
+      </div>
+      <div class="loan-list-heading">
+        <div><h3>移動する福祉用具</h3><p>移動する個体を選択してください。1回の出庫登録では同じ種類の用具をまとめて移動します。</p></div>
+        <button type="button" class="refresh-button" id="refreshTransferCandidates"><i data-lucide="refresh-cw"></i>一覧を更新</button>
+      </div>
+      <div class="table-wrap"><table class="inventory-table"><thead><tr><th>選択</th><th>福祉用具</th><th>識別ネーム</th></tr></thead><tbody id="transferCandidateBody"><tr><td colspan="3">個体情報を読み込んでいます。</td></tr></tbody></table></div>
+      <div class="loan-note-field"><label for="transferNote">備考（任意）</label><input id="transferNote" class="loan-input" type="text" maxlength="500" placeholder="移動理由・連絡事項など"></div>
+      <div class="loan-submit-row"><span class="loan-help">出庫後は移動元の在庫から差し引き、受領されるまで移動中として管理します。</span><button type="button" class="loan-submit-button" id="dispatchTransferButton" disabled><i data-lucide="truck"></i>出庫を登録</button></div>
+    </div>
+
+    <div class="panel loan-panel">
+      <div class="loan-list-heading"><div><h3>この拠点で受領待ちの福祉用具</h3><p>到着した個体を確認し、受領するものにチェックしてください。</p></div><button type="button" class="refresh-button" id="refreshPendingTransfers"><i data-lucide="refresh-cw"></i>受領待ちを更新</button></div>
+      <div class="table-wrap"><table class="inventory-table"><thead><tr><th>受領</th><th>移動元</th><th>福祉用具</th><th>識別ネーム</th><th>移動日</th></tr></thead><tbody id="pendingTransferBody"><tr><td colspan="5">受領待ち情報を読み込んでいます。</td></tr></tbody></table></div>
+      <div class="loan-note-field"><label for="transferReceiveNote">受領時の備考（任意）</label><input id="transferReceiveNote" class="loan-input" type="text" maxlength="500" placeholder="受領時の確認事項など"></div>
+      <div class="loan-submit-row"><span class="loan-help">受領登録後、個体の所属拠点と在庫数が移動先へ反映されます。</span><button type="button" class="loan-submit-button" id="receiveTransferButton" disabled><i data-lucide="package-check"></i>受領を登録</button></div>
     </div>
   </section>
 
@@ -1776,6 +1814,17 @@ document.getElementById("refreshRepairAssets")
 document.getElementById("completeRepairButton")
   .addEventListener("click", completeRepairRegistration);
 
+document.getElementById("refreshTransferCandidates")
+  .addEventListener("click", () => loadTransferCandidates(currentBranchId));
+document.getElementById("refreshPendingTransfers")
+  .addEventListener("click", () => loadPendingTransfers(currentBranchId));
+document.getElementById("dispatchTransferButton")
+  .addEventListener("click", dispatchTransfer);
+document.getElementById("transferDestination")
+  .addEventListener("change", updateDispatchButton);
+document.getElementById("receiveTransferButton")
+  .addEventListener("click", receiveTransfer);
+
 document.getElementById("loanDate")
   .addEventListener("change", () => {
     const loanDate = document.getElementById("loanDate").value;
@@ -1892,6 +1941,20 @@ loadMasterData();
           categorySelect.appendChild(option);
         });
 
+        // 拠点間移動の移動先候補を設定
+        const destinationSelect = document.getElementById("transferDestination");
+        destinationSelect.replaceChildren();
+        const destinationDefault = document.createElement("option");
+        destinationDefault.value = "";
+        destinationDefault.textContent = "移動先を選択してください";
+        destinationSelect.appendChild(destinationDefault);
+        data.bases.filter(base => base.id !== currentBranchId).forEach(base => {
+          const option = document.createElement("option");
+          option.value = base.id;
+          option.textContent = base.name;
+          destinationSelect.appendChild(option);
+        });
+
         // 貸出日は今日を初期値にする
         const now = new Date();
         document.getElementById("loanDate").value =
@@ -1910,6 +1973,8 @@ loadMasterData();
           now.getFullYear() + "-" +
           String(now.getMonth() + 1).padStart(2, "0") + "-" +
           String(now.getDate()).padStart(2, "0");
+        document.getElementById("transferDate").value =
+          now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
 
         // 在庫再読み込みは有効化
 refreshButton.disabled = false;
@@ -1934,8 +1999,10 @@ const itemSelect =
           itemSelect.appendChild(option);
         });
 
-        // 指定された拠点の在庫を取得
+        // 指定された拠点の在庫・移動情報を取得
         loadInventory(currentBranchId);
+        loadTransferCandidates(currentBranchId);
+        loadPendingTransfers(currentBranchId);
       }
     );
 
@@ -3639,6 +3706,127 @@ function showSkeleton() {
 
   }
 
+
+  // =====================================
+  // 拠点間移動：出庫候補・受領待ち
+  // =====================================
+  let transferSubmitting = false;
+
+  function loadTransferCandidates(branchId) {
+    if (!branchId) return;
+    callApi({ action: "individuals", branchId }, data => {
+      if (!data || data.success !== true) {
+        document.getElementById("transferCandidateBody").innerHTML = '<tr><td colspan="3">移動候補を取得できませんでした。</td></tr>';
+        document.getElementById("transferCandidateCount").textContent = "取得失敗";
+        return;
+      }
+      const assets = (data.assets || []).filter(asset => asset.status === "利用可能");
+      const body = document.getElementById("transferCandidateBody");
+      body.replaceChildren();
+      document.getElementById("transferCandidateCount").textContent = "移動可能 " + assets.length + "点";
+      if (!assets.length) {
+        const row = document.createElement("tr"); const cell = document.createElement("td");
+        cell.colSpan = 3; cell.textContent = "移動可能な個体はありません。"; row.appendChild(cell); body.appendChild(row);
+      } else {
+        assets.forEach(asset => {
+          const row = document.createElement("tr");
+          const selectCell = document.createElement("td"); const check = document.createElement("input");
+          check.type = "checkbox"; check.className = "transfer-candidate-check"; check.value = asset.id;
+          check.dataset.itemId = asset.itemId; check.dataset.itemName = asset.itemName;
+          check.addEventListener("change", updateDispatchButton);
+          selectCell.appendChild(check);
+          const nameCell = document.createElement("td"); nameCell.textContent = asset.itemName;
+          const idCell = document.createElement("td"); idCell.textContent = asset.identifier;
+          row.append(selectCell, nameCell, idCell); body.appendChild(row);
+        });
+      }
+      updateDispatchButton();
+    }, message => showError("移動候補の取得に失敗しました。" + message));
+  }
+
+  function updateDispatchButton() {
+    const selected = Array.from(document.querySelectorAll(".transfer-candidate-check:checked"));
+    const destination = document.getElementById("transferDestination").value;
+    const sameItem = selected.length === 0 || selected.every(x => x.dataset.itemId === selected[0].dataset.itemId);
+    document.getElementById("dispatchTransferButton").disabled = transferSubmitting || !destination || !selected.length || !sameItem;
+    const old = document.getElementById("transferCandidateCount");
+    if (selected.length && !sameItem) old.textContent = "同じ種類の用具を選択してください";
+  }
+
+  function loadPendingTransfers(branchId) {
+    if (!branchId) return;
+    callApi({ action: "pendingTransfers", branchId }, data => {
+      const body = document.getElementById("pendingTransferBody");
+      body.replaceChildren();
+      if (!data || data.success !== true) {
+        const row = document.createElement("tr"); const cell = document.createElement("td"); cell.colSpan = 5;
+        cell.textContent = data?.message || "受領待ち情報を取得できませんでした。"; row.appendChild(cell); body.appendChild(row);
+        document.getElementById("receiveTransferButton").disabled = true; return;
+      }
+      if (!data.items || !data.items.length) {
+        const row = document.createElement("tr"); const cell = document.createElement("td"); cell.colSpan = 5;
+        cell.textContent = "受領待ちの福祉用具はありません。"; row.appendChild(cell); body.appendChild(row);
+      } else data.items.forEach(item => {
+        const row = document.createElement("tr");
+        const selectCell = document.createElement("td"); const check = document.createElement("input");
+        check.type = "checkbox"; check.className = "pending-transfer-check"; check.value = item.transferItemId;
+        check.addEventListener("change", updateReceiveButton); selectCell.appendChild(check);
+        const fromCell = document.createElement("td"); fromCell.textContent = item.fromBranchName;
+        const itemCell = document.createElement("td"); itemCell.textContent = item.itemName;
+        const identifierCell = document.createElement("td"); identifierCell.textContent = item.identifier;
+        const dateCell = document.createElement("td"); dateCell.textContent = item.transferDate;
+        row.append(selectCell, fromCell, itemCell, identifierCell, dateCell); body.appendChild(row);
+      });
+      updateReceiveButton();
+    }, message => showError("受領待ち情報の取得に失敗しました。" + message));
+  }
+
+  function updateReceiveButton() {
+    const selected = document.querySelectorAll(".pending-transfer-check:checked").length;
+    document.getElementById("receiveTransferButton").disabled = transferSubmitting || selected === 0;
+  }
+
+  async function dispatchTransfer() {
+    if (transferSubmitting) return;
+    const selected = Array.from(document.querySelectorAll(".transfer-candidate-check:checked"));
+    const destination = document.getElementById("transferDestination").value;
+    const transferDate = document.getElementById("transferDate").value;
+    if (!destination) return showToast("移動先拠点を選択してください。");
+    if (!transferDate) return showToast("移動日を入力してください。");
+    if (!selected.length) return showToast("移動する個体を選択してください。");
+    if (!selected.every(x => x.dataset.itemId === selected[0].dataset.itemId)) return showToast("1回の出庫登録では同じ種類の用具を選択してください。");
+    if (!confirm(selected.length + "点を移動中として出庫登録します。よろしいですか？")) return;
+    transferSubmitting = true; updateDispatchButton();
+    try {
+      await fetch(API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify({ action: "dispatchTransfer", fromBranchId: currentBranchId, toBranchId: destination, transferDate,
+          staffId: "", note: document.getElementById("transferNote").value.trim(), individualIds: selected.map(x => x.value) }) });
+      setTimeout(() => {
+        transferSubmitting = false;
+        loadTransferCandidates(currentBranchId); loadInventory(currentBranchId);
+        showToast("出庫登録を送信しました。移動中一覧を確認してください。");
+        document.getElementById("transferNote").value = "";
+      }, 1200);
+    } catch (error) { transferSubmitting = false; updateDispatchButton(); showError("出庫登録の送信に失敗しました。"); }
+  }
+
+  async function receiveTransfer() {
+    if (transferSubmitting) return;
+    const selected = Array.from(document.querySelectorAll(".pending-transfer-check:checked"));
+    if (!selected.length) return showToast("受領する個体を選択してください。");
+    if (!confirm(selected.length + "点を受領登録します。よろしいですか？")) return;
+    transferSubmitting = true; updateReceiveButton();
+    try {
+      await fetch(API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify({ action: "receiveTransfer", branchId: currentBranchId, staffId: "", note: document.getElementById("transferReceiveNote").value.trim(), transferItemIds: selected.map(x => x.value) }) });
+      setTimeout(() => {
+        transferSubmitting = false;
+        loadPendingTransfers(currentBranchId); loadInventory(currentBranchId); loadIndividualAssets(currentBranchId);
+        showToast("受領登録を送信しました。受領後の在庫を確認してください。");
+        document.getElementById("transferReceiveNote").value = "";
+      }, 1200);
+    } catch (error) { transferSubmitting = false; updateReceiveButton(); showError("受領登録の送信に失敗しました。"); }
+  }
 
   function showError(message) {
 
