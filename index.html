@@ -280,7 +280,25 @@
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+/* 横スクロール案内 */
+.table-scroll-hint {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-top: 10px;
+  background: #edf4f8;
+  color: var(--brand);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
 
+.table-scroll-hint i {
+  width: 16px;
+  height: 16px;
+}
     .inventory-table {
       width: 100%;
       border-collapse: collapse;
@@ -1649,8 +1667,13 @@
         集計データを読み込んでいません。
       </div>
 
-      <div class="table-wrap" style="margin-top:14px;">
-        <table class="inventory-table" id="monthlyReportTable">
+      <div class="table-scroll-hint">
+  <i data-lucide="arrow-left-right"></i>
+  左右にスクロールして全項目を確認できます
+</div>
+
+<div class="table-wrap" style="margin-top:8px;">
+  <table class="inventory-table" id="monthlyReportTable">
           <tbody>
             <tr>
               <td>集計データを読み込んでください。</td>
@@ -1700,8 +1723,13 @@
         集計データを読み込んでいません。
       </div>
 
-      <div class="table-wrap" style="margin-top:14px;">
-        <table class="inventory-table" id="annualReportTable">
+      <div class="table-scroll-hint">
+  <i data-lucide="arrow-left-right"></i>
+  左右にスクロールして全項目を確認できます
+</div>
+
+<div class="table-wrap" style="margin-top:8px;">
+  <table class="inventory-table" id="annualReportTable">
           <tbody>
             <tr>
               <td>集計データを読み込んでください。</td>
