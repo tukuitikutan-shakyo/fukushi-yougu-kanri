@@ -1296,17 +1296,24 @@ const itemSelect =
     );
 
   }
+
 // =====================================
 // 個体登録
 // =====================================
 
-async function registerIndividual() {
+function registerIndividual() {
 
-  const button = document.getElementById("registerIndividualButton");
+  const button =
+    document.getElementById("registerIndividualButton");
 
-  const itemId = document.getElementById("individualItemSelect").value;
-  const identifier = document.getElementById("individualIdentifier").value.trim();
-  const note = document.getElementById("individualNote").value.trim();
+  const itemId =
+    document.getElementById("individualItemSelect").value;
+
+  const identifier =
+    document.getElementById("individualIdentifier").value.trim();
+
+  const note =
+    document.getElementById("individualNote").value.trim();
 
   // 入力チェック
   if (!currentBranchId) {
@@ -1326,153 +1333,132 @@ async function registerIndividual() {
 
   // 二重送信を防止
   button.disabled = true;
-  button.textContent = "登録中...";
+  button.textContent = "登録前に確認中...";
 
-  try {
-
-    const payload = {
-      action: "registerIndividual",
-      branchId: currentBranchId,
-      itemId: itemId,
-      identifier: identifier,
-      note: note
-    };
-
-    // GASへ登録データを送信
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "text/plain;charset=UTF-8"
-      },
-      body: JSON.stringify(payload)
-    });
-
-    button.textContent = "登録結果を確認中...";
-
-    // 登録後、個体一覧を再取得して照合
-    callApi(
-      {
-        action: "individuals",
-        branchId: currentBranchId
-      },
-      data => {
-
-        button.disabled = false;
-        button.textContent = "個体を登録";
-
-        if (!data || data.success !== true) {
-          showError("登録後の確認に失敗しました。個体一覧を再読み込みしてください。");
-          return;
-        }
-
-        const registered = data.assets.some(
-  asset =>
-    asset.identifier === identifier &&
-    asset.itemId === itemId
-);
-        if (!registered) {
-          showError("個体の登録を確認できませんでした。入力内容と登録状況を確認してください。");
-          return;
-        }
-
-        // 登録を確認できた場合のみ入力欄をクリア
-        document.getElementById("individualItemSelect").value = "";
-        document.getElementById("individualIdentifier").value = "";
-        document.getElementById("individualNote").value = "";
-
-        // 在庫と個体一覧を再読み込み
-        loadInventory(currentBranchId);
-
-        showToast("個体を登録しました。");
-
-      }
-    );
-
-  } catch (error) {
-
+  // ボタンを元に戻す
+  function resetButton() {
     button.disabled = false;
     button.textContent = "個体を登録";
-
-    showError("登録リクエストの送信に失敗しました。通信状態を確認してください。");
-
   }
+
+  // まず登録済み個体を取得
+  callApi(
+    {
+      action: "individuals",
+      branchId: currentBranchId
+    },
+    async data => {
+
+      if (!data || data.success !== true) {
+        resetButton();
+        showError("登録済み個体の確認に失敗しました。");
+        return;
+      }
+
+      const existingAssets = Array.isArray(data.assets)
+        ? data.assets
+        : [];
+
+      // 同じ物品・識別ネームが既に存在するか確認
+      const duplicate = existingAssets.some(
+        asset =>
+          asset.itemId === itemId &&
+          String(asset.identifier).trim() === identifier
+      );
+
+      if (duplicate) {
+        resetButton();
+        showError(
+          "同じ福祉用具・識別ネームは既に登録されています。"
+        );
+        return;
+      }
+
+      // 登録前の個体IDを保存
+      const existingIds = new Set(
+        existingAssets.map(asset => asset.id)
+      );
+
+      try {
+
+        button.textContent = "登録中...";
+
+        // GASへ登録データを送信
+        await fetch(API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=UTF-8"
+          },
+          body: JSON.stringify({
+            action: "registerIndividual",
+            branchId: currentBranchId,
+            itemId: itemId,
+            identifier: identifier,
+            note: note
+          })
+        });
+
+        button.textContent = "登録結果を確認中...";
+
+        // 登録後に個体一覧を再取得
+        callApi(
+          {
+            action: "individuals",
+            branchId: currentBranchId
+          },
+          result => {
+
+            resetButton();
+
+            if (!result || result.success !== true) {
+              showError(
+                "登録後の確認に失敗しました。個体一覧を再読み込みしてください。"
+              );
+              return;
+            }
+
+            const newAsset = result.assets.find(
+              asset =>
+                asset.identifier === identifier &&
+                asset.itemId === itemId &&
+                !existingIds.has(asset.id)
+            );
+
+            // 登録前になかった個体IDが確認できなければ失敗
+            if (!newAsset) {
+              showError(
+                "新しい個体の登録を確認できませんでした。登録状況を確認してください。"
+              );
+              return;
+            }
+
+            // 登録成功時のみ入力欄をクリア
+            document.getElementById("individualItemSelect").value = "";
+            document.getElementById("individualIdentifier").value = "";
+            document.getElementById("individualNote").value = "";
+
+            loadInventory(currentBranchId);
+
+            showToast("個体を登録しました。");
+
+          }
+        );
+
+      } catch (error) {
+
+        resetButton();
+
+        showError(
+          "登録リクエストの送信に失敗しました。通信状態を確認してください。"
+        );
+
+      }
+
+    }
+  );
 
 }
-  // =====================================
-  // JSONP通信共通処理
-  // =====================================
-
-  function callApi(params, successCallback) {
-
-    const requestId = ++requestNumber;
-
-    clearTimeout(requestTimer);
-
-    // 古い通信の結果を無視するための番号
-    const callbackName = "apiCallback_" + requestId;
-
-    const query = new URLSearchParams({
-      ...params,
-      callback: callbackName,
-      t: Date.now()
-    });
-
-    const script = document.createElement("script");
-
-    let completed = false;
-
-    window[callbackName] = data => {
-
-      if (completed) return;
-
-      completed = true;
-
-      clearTimeout(requestTimer);
-
-      script.remove();
-
-      delete window[callbackName];
-
-      successCallback(data);
-
-    };
-
-    script.onerror = () => {
-
-      if (completed) return;
-
-      completed = true;
-
-      clearTimeout(requestTimer);
-
-      script.remove();
-
-      delete window[callbackName];
-
-      showError("GASとの通信に失敗しました。");
-
-    };
-
-    script.src = API_URL + "?" + query.toString();
-
-    document.body.appendChild(script);
-
-    requestTimer = setTimeout(() => {
-
-      if (completed) return;
-
-      completed = true;
-
-      script.remove();
-
-      delete window[callbackName];
-
-      showError("通信がタイムアウトしました。");
-
-    }, 15000);
-
-  }
 
 
   // =====================================
