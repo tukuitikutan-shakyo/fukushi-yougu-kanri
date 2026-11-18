@@ -623,6 +623,22 @@
       }
     }
 
+    /* 返却登録 */
+    .return-section {
+      margin: 0 0 28px;
+    }
+
+    .return-assets-table {
+      min-width: 560px;
+    }
+
+    .return-asset-check {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
     .unit {
       color: var(--muted);
       font-size: 11px;
@@ -811,7 +827,7 @@
       </div>
       <span>福祉用具貸出管理</span>
       <small style="font-size:10px; color:var(--muted); font-weight:500;">
-  update11180910
+  update11181350
 </small>
     </div>
     
@@ -833,6 +849,8 @@
     <div class="drawer-title">メニュー</div>
     <a class="drawer-link" href="#loanRegistration"
       onclick="closeDrawer()">貸出登録</a>
+    <a class="drawer-link" href="#returnRegistration"
+      onclick="closeDrawer()">返却登録</a>
     <a class="drawer-link" href="#inventory"
       onclick="closeDrawer()">在庫管理</a>
     <a class="drawer-link" href="#summary"
@@ -933,6 +951,64 @@
         <button type="button" class="loan-submit-button" id="registerLoanButton" disabled>
           <i data-lucide="clipboard-check"></i>
           貸出を登録
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 返却登録 -->
+  <section id="returnRegistration" class="return-section">
+    <div class="section-heading">
+      <h2>返却登録</h2>
+      <span id="returnAssetCount">貸出中の個体を読み込み中</span>
+    </div>
+
+    <div class="panel loan-panel">
+      <div class="loan-form-grid">
+        <div class="field">
+          <label for="returnDate">返却日</label>
+          <input id="returnDate" class="loan-input" type="date" required>
+        </div>
+      </div>
+
+      <div class="loan-list-heading">
+        <div>
+          <h3>返却する福祉用具</h3>
+          <p>返却された個体にチェックを入れてください。通常返却として利用可能に戻します。</p>
+        </div>
+        <button type="button" class="refresh-button" id="refreshReturnAssets">
+          <i data-lucide="refresh-cw"></i>
+          貸出中一覧を更新
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="inventory-table return-assets-table">
+          <thead>
+            <tr>
+              <th>選択</th>
+              <th>福祉用具</th>
+              <th>識別ネーム</th>
+              <th>状態</th>
+            </tr>
+          </thead>
+          <tbody id="returnAssetBody">
+            <tr><td colspan="4">貸出中の個体情報を読み込んでいます。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="loan-note-field">
+        <label for="returnNote">備考（任意）</label>
+        <input id="returnNote" class="loan-input" type="text" maxlength="500"
+          placeholder="返却時の連絡事項など">
+      </div>
+
+      <div class="loan-submit-row">
+        <span class="loan-help">破損・整備が必要な用具の返却処理は、整備機能追加後に対応します。</span>
+        <button type="button" class="loan-submit-button" id="registerReturnButton" disabled>
+          <i data-lucide="clipboard-check"></i>
+          返却を登録
         </button>
       </div>
     </div>
@@ -1231,6 +1307,7 @@ let originalStockData = [];
 let currentBranchName = "";
 let masterCategories = [];
 let loanSubmitting = false;
+let returnSubmitting = false;
 
   const branchSelect =
     document.getElementById("branchSelect");
@@ -1358,6 +1435,13 @@ document.getElementById("registerIndividualButton")
 document.getElementById("refreshLoanAssets")
   .addEventListener("click", () => loadIndividualAssets(currentBranchId));
 
+// 返却登録
+ document.getElementById("registerReturnButton")
+  .addEventListener("click", registerReturn);
+
+document.getElementById("refreshReturnAssets")
+  .addEventListener("click", () => loadIndividualAssets(currentBranchId));
+
 document.getElementById("loanDate")
   .addEventListener("change", () => {
     const loanDate = document.getElementById("loanDate").value;
@@ -1475,6 +1559,10 @@ loadMasterData();
           now.getFullYear() + "-" +
           String(now.getMonth() + 1).padStart(2, "0") + "-" +
           String(now.getDate()).padStart(2, "0");
+        document.getElementById("returnDate").value =
+          now.getFullYear() + "-" +
+          String(now.getMonth() + 1).padStart(2, "0") + "-" +
+          String(now.getDate()).padStart(2, "0");
 
         // 在庫再読み込みは有効化
 refreshButton.disabled = false;
@@ -1583,6 +1671,7 @@ const itemSelect =
 
         count.textContent = data.count + "点";
         renderLoanAssets(Array.isArray(data.assets) ? data.assets : []);
+        renderReturnAssets(Array.isArray(data.assets) ? data.assets : []);
 
         if (!Array.isArray(data.assets) || data.assets.length === 0) {
 
@@ -1804,6 +1893,166 @@ async function registerLoan() {
     button.disabled = false;
     button.textContent = "貸出を登録";
     showError("貸出登録の送信に失敗しました。通信状態を確認してください。");
+  }
+}
+
+
+// =====================================
+// 返却中個体一覧の描画
+// =====================================
+
+function renderReturnAssets(assets) {
+
+  const body = document.getElementById("returnAssetBody");
+  const count = document.getElementById("returnAssetCount");
+  const button = document.getElementById("registerReturnButton");
+
+  body.replaceChildren();
+
+  const loanedAssets = assets.filter(asset =>
+    asset.status === "貸出中" && asset.currentLoanItemId
+  );
+
+  count.textContent = "返却対象 " + loanedAssets.length + "点";
+  button.disabled = loanedAssets.length === 0 || returnSubmitting;
+
+  if (loanedAssets.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.textContent = "現在、返却対象の個体はありません。";
+    row.appendChild(cell);
+    body.appendChild(row);
+    return;
+  }
+
+  loanedAssets.forEach(asset => {
+    const row = document.createElement("tr");
+
+    const selectCell = document.createElement("td");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "return-asset-check";
+    checkbox.value = asset.currentLoanItemId;
+    checkbox.dataset.individualId = asset.id;
+    checkbox.setAttribute("aria-label", asset.itemName + " " + asset.identifier + "を返却する");
+    selectCell.appendChild(checkbox);
+
+    const itemCell = document.createElement("td");
+    itemCell.textContent = asset.itemName;
+
+    const identifierCell = document.createElement("td");
+    identifierCell.textContent = asset.identifier;
+
+    const statusCell = document.createElement("td");
+    statusCell.textContent = "貸出中";
+
+    row.append(selectCell, itemCell, identifierCell, statusCell);
+    body.appendChild(row);
+  });
+}
+
+
+// =====================================
+// 返却登録
+// =====================================
+
+async function registerReturn() {
+
+  if (returnSubmitting) return;
+
+  const button = document.getElementById("registerReturnButton");
+  const returnDate = document.getElementById("returnDate").value;
+  const note = document.getElementById("returnNote").value.trim();
+
+  if (!currentBranchId) {
+    showToast("拠点を特定できません。");
+    return;
+  }
+
+  if (!returnDate) {
+    showToast("返却日を入力してください。");
+    document.getElementById("returnDate").focus();
+    return;
+  }
+
+  const selected = Array.from(
+    document.querySelectorAll("#returnAssetBody .return-asset-check:checked")
+  );
+
+  if (selected.length === 0) {
+    showToast("返却する個体を選択してください。");
+    return;
+  }
+
+  const items = selected.map(checkbox => ({
+    loanItemId: checkbox.value,
+    individualId: checkbox.dataset.individualId
+  }));
+
+  returnSubmitting = true;
+  button.disabled = true;
+  button.textContent = "返却登録中...";
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify({
+        action: "registerReturn",
+        branchId: currentBranchId,
+        returnDate: returnDate,
+        staffId: "",
+        note: note,
+        items: items.map(item => ({ loanItemId: item.loanItemId }))
+      })
+    });
+
+    button.textContent = "返却結果を確認中...";
+
+    // 個体状態が利用可能に戻ったことを確認
+    callApi(
+      { action: "individuals", branchId: currentBranchId },
+      data => {
+        returnSubmitting = false;
+        button.textContent = "返却を登録";
+
+        if (!data || data.success !== true) {
+          button.disabled = false;
+          showError("返却後の個体状態を確認できませんでした。個体一覧を更新してください。");
+          return;
+        }
+
+        const assetsById = new Map(data.assets.map(asset => [asset.id, asset]));
+        const allReturned = items.every(item => {
+          const asset = assetsById.get(item.individualId);
+          return asset && asset.status === "利用可能" && !asset.currentLoanItemId;
+        });
+
+        if (!allReturned) {
+          button.disabled = false;
+          showError("返却登録を確認できませんでした。個体の状態を確認してください。");
+          return;
+        }
+
+        document.getElementById("returnNote").value = "";
+        loadInventory(currentBranchId);
+        showToast(items.length + "点の返却を登録しました。");
+      },
+      message => {
+        returnSubmitting = false;
+        button.disabled = false;
+        button.textContent = "返却を登録";
+        showError("返却後の確認に失敗しました。" + message);
+      }
+    );
+
+  } catch (error) {
+    returnSubmitting = false;
+    button.disabled = false;
+    button.textContent = "返却を登録";
+    showError("返却登録の送信に失敗しました。通信状態を確認してください。");
   }
 }
 
