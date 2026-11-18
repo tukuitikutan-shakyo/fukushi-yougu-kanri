@@ -716,51 +716,6 @@
     }
 
     .return-asset-check,
-    .repair-item-check {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--brand);
-      cursor: pointer;
-    }
-
-    .return-status-select,
-    .return-maintenance-input {
-      width: 100%;
-      min-width: 150px;
-      min-height: 38px;
-      padding: 0 9px;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      background: white;
-      color: var(--text);
-      font: inherit;
-    }
-
-    .return-maintenance-input:disabled {
-      background: #f3f5f7;
-      color: #9aa5af;
-      cursor: not-allowed;
-    }
-
-    /* 整備管理 */
-    .repair-section {
-      margin: 0 0 28px;
-    }
-
-    .repair-assets-table {
-      min-width: 820px;
-    }
-
-    .repair-completion-date {
-      min-width: 155px;
-      min-height: 38px;
-      padding: 0 8px;
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      font: inherit;
-      color: var(--text);
-    }
-
     .unit {
       color: var(--muted);
       font-size: 11px;
@@ -1048,7 +1003,7 @@
       </div>
       <span>福祉用具貸出管理</span>
       <small style="font-size:10px; color:var(--muted); font-weight:500;">
-  update11182625
+  update11191600
 </small>
     </div>
     
@@ -1086,7 +1041,6 @@
     <a class="drawer-link" href="#" onclick="switchPageTab('loan'); closeDrawer(); return false;">貸出登録</a>
     <a class="drawer-link" href="#" onclick="switchPageTab('return'); closeDrawer(); return false;">返却登録</a>
     <a class="drawer-link" href="#" onclick="switchPageTab('extension'); closeDrawer(); return false;">延長受付</a>
-    <a class="drawer-link" href="#" onclick="switchPageTab('repair'); closeDrawer(); return false;">整備管理</a>
     <a class="drawer-link" href="#" onclick="switchPageTab('inventory'); closeDrawer(); return false;">物品在庫一覧</a>
     <a class="drawer-link" href="#summary"
       onclick="closeDrawer()">在庫概要</a>
@@ -1106,12 +1060,37 @@
     <p>拠点ごとの福祉用具の保有状況を確認できます。</p>
   </div>
 
+  <section class="summary" id="summary">
+    <div class="summary-card">
+      <div class="summary-label">総在庫数</div>
+      <div class="summary-number">
+        <span id="totalCount">－</span>
+        <span class="summary-unit">点</span>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">貸出中</div>
+      <div class="summary-number">
+        <span id="loanedCount">－</span>
+        <span class="summary-unit">点</span>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-label">利用可能</div>
+      <div class="summary-number">
+        <span id="availableCount">－</span>
+        <span class="summary-unit">点</span>
+      </div>
+    </div>
+  </section>
+
     <nav class="page-tabs" role="tablist" aria-label="管理画面">
     <button type="button" class="page-tab active" role="tab" aria-selected="true" data-tab-target="loan">貸出登録</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="timeline">貸出期間一覧</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="return">返却登録</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="extension">延長受付</button>
-    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="repair">整備管理</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="inventory">物品在庫一覧</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="monthlyReport">月別集計</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="annualReport">年度集計</button>
@@ -1311,66 +1290,6 @@
     </div>
   </section>
 
-  <!-- 整備管理 -->
-  <section id="repairManagement" class="repair-section" data-tab-page="repair">
-    <div class="section-heading">
-      <h2>整備管理</h2>
-      <span id="repairAssetCount">整備中の個体を読み込み中</span>
-    </div>
-
-    <div class="panel loan-panel">
-      <div class="loan-form-grid">
-        <div class="field">
-          <label for="repairCompletionDate">整備完了日</label>
-          <input id="repairCompletionDate" class="loan-input" type="date" required>
-        </div>
-      </div>
-
-      <div class="loan-list-heading">
-        <div>
-          <h3>整備中の福祉用具</h3>
-          <p>整備が完了した個体にチェックを入れて、利用可能へ戻します。</p>
-        </div>
-        <button type="button" class="refresh-button" id="refreshRepairAssets">
-          <i data-lucide="refresh-cw"></i>
-          整備中一覧を更新
-        </button>
-      </div>
-
-      <div class="table-wrap">
-        <table class="inventory-table repair-assets-table">
-          <thead>
-            <tr>
-              <th>選択</th>
-              <th>福祉用具</th>
-              <th>識別ネーム</th>
-              <th>整備受付日</th>
-              <th>整備内容</th>
-              <th>備考</th>
-            </tr>
-          </thead>
-          <tbody id="repairAssetBody">
-            <tr><td colspan="6">整備中の個体情報を読み込んでいます。</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="loan-note-field">
-        <label for="repairCompletionNote">完了時の備考（任意）</label>
-        <input id="repairCompletionNote" class="loan-input" type="text" maxlength="500"
-          placeholder="整備完了に関する連絡事項など">
-      </div>
-
-      <div class="loan-submit-row">
-        <span class="loan-help">整備完了後は、整備中数が減り、利用可能数が増えます。</span>
-        <button type="button" class="loan-submit-button" id="completeRepairButton" disabled>
-          <i data-lucide="wrench"></i>
-          整備完了を登録
-        </button>
-      </div>
-    </div>
-  </section>
-
   <!-- 貸出期間一覧 -->
   <section id="loanTimeline" data-tab-page="timeline">
     <div class="section-heading">
@@ -1397,31 +1316,7 @@
     </div>
   </section>
 
-  <section class="summary" id="summary" data-tab-page="inventory">
-    <div class="summary-card">
-      <div class="summary-label">総在庫数</div>
-      <div class="summary-number">
-        <span id="totalCount">－</span>
-        <span class="summary-unit">点</span>
-      </div>
-    </div>
 
-    <div class="summary-card">
-      <div class="summary-label">貸出中</div>
-      <div class="summary-number">
-        <span id="loanedCount">－</span>
-        <span class="summary-unit">点</span>
-      </div>
-    </div>
-
-    <div class="summary-card">
-      <div class="summary-label">利用可能</div>
-      <div class="summary-number">
-        <span id="availableCount">－</span>
-        <span class="summary-unit">点</span>
-      </div>
-    </div>
-  </section>
 
   <section id="inventory" data-tab-page="inventory">
     <div class="section-heading">
@@ -1825,7 +1720,6 @@ let masterCategories = [];
 let loanSubmitting = false;
 let returnSubmitting = false;
 let extensionSubmitting = false;
-let repairSubmitting = false;
 
   const branchSelect =
     document.getElementById("branchSelect");
@@ -1929,6 +1823,7 @@ let repairSubmitting = false;
     tabButtons.forEach(tab => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
+        if (target === "timeline") loadLoanTimeline(currentBranchId);
         tabButtons.forEach(button => {
           const selected = button === tab;
           button.classList.toggle("active", selected);
@@ -1995,12 +1890,6 @@ document.getElementById("registerExtensionButton")
 document.getElementById("refreshExtensionAssets")
   .addEventListener("click", () => loadExtensionAssets(currentBranchId));
 
-document.getElementById("refreshRepairAssets")
-  .addEventListener("click", () => loadRepairAssets(currentBranchId));
-
-document.getElementById("completeRepairButton")
-  .addEventListener("click", completeRepairRegistration);
-
 
 document.getElementById("loanDate")
   .addEventListener("change", () => {
@@ -2017,7 +1906,7 @@ if (!document.getElementById("timelineStart").value) {
   document.getElementById("timelineStart").value = localDateString(new Date());
 }
 document.getElementById("timelineStart").addEventListener("change", () => loadLoanTimeline(currentBranchId));
-document.getElementById("refreshTimeline").addEventListener("click", () => loadLoanTimeline(currentBranchId));
+document.getElementById("refreshTimeline").addEventListener("click", () => loadLoanTimeline(currentBranchId, true));
 
 // モーダルの背景をクリックした場合も閉じる
 document.getElementById("stockConfirmModal")
@@ -2142,10 +2031,6 @@ loadMasterData();
           now.getFullYear() + "-" +
           String(now.getMonth() + 1).padStart(2, "0") + "-" +
           String(now.getDate()).padStart(2, "0");
-        document.getElementById("repairCompletionDate").value =
-          now.getFullYear() + "-" +
-          String(now.getMonth() + 1).padStart(2, "0") + "-" +
-          String(now.getDate()).padStart(2, "0");
 
         // 在庫再読み込みは有効化
 refreshButton.disabled = false;
@@ -2212,8 +2097,6 @@ loadInventory(currentBranchId);
         loadIndividualAssets(branchId);
         // 延長受付用の貸出中物品を取得
         loadExtensionAssets(branchId);
-        // 整備中の個体を取得
-        loadRepairAssets(branchId);
 
         setConnection("接続中");
 
@@ -2512,6 +2395,8 @@ async function registerLoan() {
         }
 
         document.getElementById("loanNote").value = "";
+        loanTimelineCache = null;
+        loanTimelineCacheAt = 0;
         loadInventory(currentBranchId);
         const timelineStart = document.getElementById("timelineStart");
         if (!timelineStart.value) { const today = new Date(); timelineStart.value = localDateString(new Date(today.getFullYear(), today.getMonth(), 1)); }
@@ -2727,6 +2612,8 @@ async function registerReturn() {
         }
 
         document.getElementById("returnNote").value = "";
+        loanTimelineCache = null;
+        loanTimelineCacheAt = 0;
         loadInventory(currentBranchId);
         const repairCount = items.filter(item => item.returnStatus === "整備が必要").length;
         const normalCount = items.length - repairCount;
@@ -2751,1135 +2638,6 @@ async function registerReturn() {
 }
 
 
-// =====================================
-// 整備中一覧の取得
-// =====================================
-
-function loadRepairAssets(branchId) {
-  if (!branchId) return;
-
-  callApi(
-    { action: "repairItems", branchId: branchId },
-    data => {
-      if (!data || data.success !== true) {
-        const body = document.getElementById("repairAssetBody");
-        body.replaceChildren();
-        const row = document.createElement("tr");
-        const cell = document.createElement("td");
-        cell.colSpan = 6;
-        cell.textContent = data?.message || "整備中一覧を取得できませんでした。";
-        row.appendChild(cell);
-        body.appendChild(row);
-        document.getElementById("repairAssetCount").textContent = "取得失敗";
-        document.getElementById("completeRepairButton").disabled = true;
-        return;
-      }
-      renderRepairAssets(Array.isArray(data.items) ? data.items : []);
-    },
-    message => showError("整備中一覧の取得に失敗しました。" + message)
-  );
-}
-
-
-// =====================================
-// 整備中一覧の描画
-// =====================================
-
-function renderRepairAssets(items) {
-  const body = document.getElementById("repairAssetBody");
-  const count = document.getElementById("repairAssetCount");
-  const button = document.getElementById("completeRepairButton");
-
-  body.replaceChildren();
-  count.textContent = "整備中 " + items.length + "点";
-  button.disabled = items.length === 0 || repairSubmitting;
-
-  if (items.length === 0) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.colSpan = 6;
-    cell.textContent = "現在、整備中の個体はありません。";
-    row.appendChild(cell);
-    body.appendChild(row);
-    return;
-  }
-
-  items.forEach(item => {
-    const row = document.createElement("tr");
-
-    const selectCell = document.createElement("td");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "repair-item-check";
-    checkbox.value = item.maintenanceId;
-    checkbox.setAttribute("aria-label", item.itemName + " " + item.identifier + "の整備を完了する");
-    selectCell.appendChild(checkbox);
-
-    const itemCell = document.createElement("td");
-    itemCell.textContent = item.itemName;
-
-    const identifierCell = document.createElement("td");
-    identifierCell.textContent = item.identifier;
-
-    const dateCell = document.createElement("td");
-    dateCell.textContent = item.receptionDate || "未登録";
-
-    const contentCell = document.createElement("td");
-    contentCell.textContent = item.maintenanceContent || "未記入";
-
-    const noteCell = document.createElement("td");
-    noteCell.textContent = item.note || "－";
-
-    row.append(selectCell, itemCell, identifierCell, dateCell, contentCell, noteCell);
-    body.appendChild(row);
-  });
-}
-
-
-// =====================================
-// 整備完了登録
-// =====================================
-
-async function completeRepairRegistration() {
-  if (repairSubmitting) return;
-
-  const button = document.getElementById("completeRepairButton");
-  const completionDate = document.getElementById("repairCompletionDate").value;
-  const note = document.getElementById("repairCompletionNote").value.trim();
-
-  if (!completionDate) {
-    showToast("整備完了日を入力してください。");
-    document.getElementById("repairCompletionDate").focus();
-    return;
-  }
-
-  const selected = Array.from(
-    document.querySelectorAll("#repairAssetBody .repair-item-check:checked")
-  );
-
-  if (selected.length === 0) {
-    showToast("整備完了にする個体を選択してください。");
-    return;
-  }
-
-  const maintenanceIds = selected.map(checkbox => checkbox.value);
-  repairSubmitting = true;
-  button.disabled = true;
-  button.textContent = "整備完了を登録中...";
-
-  try {
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      body: JSON.stringify({
-        action: "completeRepair",
-        completionDate: completionDate,
-        staffId: "",
-        note: note,
-        items: maintenanceIds.map(maintenanceId => ({ maintenanceId: maintenanceId }))
-      })
-    });
-
-    button.textContent = "完了結果を確認中...";
-
-    callApi(
-      { action: "repairItems", branchId: currentBranchId },
-      data => {
-        repairSubmitting = false;
-        button.textContent = "整備完了を登録";
-
-        if (!data || data.success !== true || !Array.isArray(data.items)) {
-          button.disabled = false;
-          showError("整備完了後の一覧を確認できませんでした。再読み込みしてください。");
-          return;
-        }
-
-        const stillRepairing = new Set(data.items.map(item => item.maintenanceId));
-        const allCompleted = maintenanceIds.every(id => !stillRepairing.has(id));
-
-        if (!allCompleted) {
-          button.disabled = false;
-          showError("整備完了を確認できませんでした。整備中一覧を確認してください。");
-          return;
-        }
-
-        document.getElementById("repairCompletionNote").value = "";
-        loadInventory(currentBranchId);
-        showToast(maintenanceIds.length + "点の整備完了を登録しました。");
-      },
-      message => {
-        repairSubmitting = false;
-        button.disabled = false;
-        button.textContent = "整備完了を登録";
-        showError("整備完了後の確認に失敗しました。" + message);
-      }
-    );
-  } catch (error) {
-    repairSubmitting = false;
-    button.disabled = false;
-    button.textContent = "整備完了を登録";
-    showError("整備完了の送信に失敗しました。通信状態を確認してください。");
-  }
-}
-
-
-// =====================================
-// 延長対象一覧の取得
-// =====================================
-
-function loadExtensionAssets(branchId) {
-  if (!branchId) return;
-
-  callApi(
-    { action: "loanedItems", branchId: branchId },
-    data => {
-      if (!data || data.success !== true) {
-        const body = document.getElementById("extensionAssetBody");
-        body.replaceChildren();
-        const row = document.createElement("tr");
-        const cell = document.createElement("td");
-        cell.colSpan = 5;
-        cell.textContent = data?.message || "延長対象を取得できませんでした。";
-        row.appendChild(cell);
-        body.appendChild(row);
-        document.getElementById("extensionAssetCount").textContent = "取得失敗";
-        document.getElementById("registerExtensionButton").disabled = true;
-        return;
-      }
-      renderExtensionAssets(Array.isArray(data.items) ? data.items : []);
-    },
-    message => {
-      showError("延長対象の取得に失敗しました。" + message);
-    }
-  );
-}
-
-
-// =====================================
-// 延長対象一覧の描画
-// =====================================
-
-function renderExtensionAssets(items) {
-  const body = document.getElementById("extensionAssetBody");
-  const count = document.getElementById("extensionAssetCount");
-  const button = document.getElementById("registerExtensionButton");
-
-  body.replaceChildren();
-  count.textContent = "延長対象 " + items.length + "点";
-  button.disabled = items.length === 0 || extensionSubmitting;
-
-  if (items.length === 0) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.colSpan = 5;
-    cell.textContent = "現在、延長できる貸出中の個体はありません。";
-    row.appendChild(cell);
-    body.appendChild(row);
-    return;
-  }
-
-  items.forEach(item => {
-    const row = document.createElement("tr");
-
-    const selectCell = document.createElement("td");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "extension-asset-check";
-    checkbox.value = item.loanItemId;
-    checkbox.dataset.individualId = item.individualId;
-    checkbox.setAttribute("aria-label", item.itemName + " " + item.identifier + "を延長する");
-    selectCell.appendChild(checkbox);
-
-    const itemCell = document.createElement("td");
-    itemCell.textContent = item.itemName;
-
-    const identifierCell = document.createElement("td");
-    identifierCell.textContent = item.identifier;
-
-    const currentDateCell = document.createElement("td");
-    currentDateCell.className = "extension-current-date";
-    currentDateCell.textContent = item.dueDate || "未設定";
-
-    const newDateCell = document.createElement("td");
-    const dateInput = document.createElement("input");
-    dateInput.type = "date";
-    dateInput.className = "extension-new-date";
-    dateInput.disabled = true;
-    dateInput.dataset.loanItemId = item.loanItemId;
-    dateInput.dataset.currentDueDate = item.dueDate || "";
-    dateInput.setAttribute("aria-label", item.identifier + "の変更後返却予定日");
-    dateInput.min = getNextDate(item.dueDate);
-    newDateCell.appendChild(dateInput);
-
-    checkbox.addEventListener("change", () => {
-      dateInput.disabled = !checkbox.checked;
-      if (!checkbox.checked) dateInput.value = "";
-    });
-
-    row.append(selectCell, itemCell, identifierCell, currentDateCell, newDateCell);
-    body.appendChild(row);
-  });
-}
-
-
-function getNextDate(dateText) {
-  if (!dateText) return "";
-  const parts = dateText.split("-").map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return "";
-  const date = new Date(parts[0], parts[1] - 1, parts[2] + 1);
-  return date.getFullYear() + "-" +
-    String(date.getMonth() + 1).padStart(2, "0") + "-" +
-    String(date.getDate()).padStart(2, "0");
-}
-
-
-// =====================================
-// 延長受付登録
-// =====================================
-
-async function registerExtension() {
-  if (extensionSubmitting) return;
-
-  const button = document.getElementById("registerExtensionButton");
-  const receptionDate = document.getElementById("extensionDate").value;
-  const note = document.getElementById("extensionNote").value.trim();
-
-  if (!currentBranchId) {
-    showToast("拠点を特定できません。");
-    return;
-  }
-
-  if (!receptionDate) {
-    showToast("受付日を入力してください。");
-    document.getElementById("extensionDate").focus();
-    return;
-  }
-
-  const selected = Array.from(
-    document.querySelectorAll("#extensionAssetBody .extension-asset-check:checked")
-  );
-
-  if (selected.length === 0) {
-    showToast("延長する個体を選択してください。");
-    return;
-  }
-
-  const items = selected.map(checkbox => {
-    const input = document.querySelector(
-      '.extension-new-date[data-loan-item-id="' + CSS.escape(checkbox.value) + '"]'
-    );
-    return {
-      loanItemId: checkbox.value,
-      newDueDate: input ? input.value : "",
-      oldDueDate: input ? input.dataset.currentDueDate : ""
-    };
-  });
-
-  for (const item of items) {
-    if (!item.newDueDate) {
-      showToast("選択したすべての物品に変更後の返却予定日を入力してください。");
-      return;
-    }
-    if (item.newDueDate <= item.oldDueDate) {
-      showToast("変更後の返却予定日は現在の日付より後にしてください。");
-      return;
-    }
-    if (item.newDueDate < receptionDate) {
-      showToast("変更後の返却予定日は受付日以降にしてください。");
-      return;
-    }
-  }
-
-  extensionSubmitting = true;
-  button.disabled = true;
-  button.textContent = "延長登録中...";
-
-  try {
-    await fetch(API_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      body: JSON.stringify({
-        action: "registerExtension",
-        receptionDate: receptionDate,
-        receptionMethod: "電話",
-        staffId: "",
-        note: note,
-        items: items.map(item => ({
-          loanItemId: item.loanItemId,
-          newDueDate: item.newDueDate
-        }))
-      })
-    });
-
-    button.textContent = "登録結果を確認中...";
-
-    callApi(
-      { action: "loanedItems", branchId: currentBranchId },
-      data => {
-        extensionSubmitting = false;
-        button.textContent = "延長を登録";
-
-        if (!data || data.success !== true || !Array.isArray(data.items)) {
-          button.disabled = false;
-          showError("延長後の返却予定日を確認できませんでした。一覧を更新してください。");
-          return;
-        }
-
-        const dueDates = new Map(data.items.map(item => [item.loanItemId, item.dueDate]));
-        const allExtended = items.every(item => dueDates.get(item.loanItemId) === item.newDueDate);
-
-        if (!allExtended) {
-          button.disabled = false;
-          showError("延長受付を確認できませんでした。返却予定日を確認してください。");
-          return;
-        }
-
-        document.getElementById("extensionNote").value = "";
-        loadExtensionAssets(currentBranchId);
-        showToast("電話1回分の延長受付（" + items.length + "点）を登録しました。");
-      },
-      message => {
-        extensionSubmitting = false;
-        button.disabled = false;
-        button.textContent = "延長を登録";
-        showError("延長後の確認に失敗しました。" + message);
-      }
-    );
-  } catch (error) {
-    extensionSubmitting = false;
-    button.disabled = false;
-    button.textContent = "延長を登録";
-    showError("延長受付の送信に失敗しました。通信状態を確認してください。");
-  }
-}
-
-
-// =====================================
-// 個体登録
-// =====================================
-
-function registerIndividual() {
-
-  const button =
-    document.getElementById("registerIndividualButton");
-
-  const itemId =
-    document.getElementById("individualItemSelect").value;
-
-  const identifier =
-    document.getElementById("individualIdentifier").value.trim();
-
-  const note =
-    document.getElementById("individualNote").value.trim();
-
-  // 入力チェック
-  if (!currentBranchId) {
-    showToast("拠点を特定できません。");
-    return;
-  }
-
-  if (!itemId) {
-    showToast("福祉用具を選択してください。");
-    return;
-  }
-
-  if (!identifier) {
-    showToast("識別ネームを入力してください。");
-    return;
-  }
-
-  // 二重送信を防止
-  button.disabled = true;
-  button.textContent = "登録前に確認中...";
-
-  // ボタンを元に戻す
-  function resetButton() {
-    button.disabled = false;
-    button.textContent = "個体を登録";
-  }
-
-  // まず登録済み個体を取得
-  callApi(
-    {
-      action: "individuals",
-      branchId: currentBranchId
-    },
-    async data => {
-
-      if (!data || data.success !== true) {
-        resetButton();
-        showError("登録済み個体の確認に失敗しました。");
-        return;
-      }
-
-      const existingAssets = Array.isArray(data.assets)
-        ? data.assets
-        : [];
-
-      // 同じ物品・識別ネームが既に存在するか確認
-      const duplicate = existingAssets.some(
-        asset =>
-          asset.itemId === itemId &&
-          String(asset.identifier).trim() === identifier
-      );
-
-      if (duplicate) {
-        resetButton();
-        showError(
-          "同じ福祉用具・識別ネームは既に登録されています。"
-        );
-        return;
-      }
-
-      // 登録前の個体IDを保存
-      const existingIds = new Set(
-        existingAssets.map(asset => asset.id)
-      );
-
-      try {
-
-        button.textContent = "登録中...";
-
-        // GASへ登録データを送信
-        await fetch(API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: {
-            "Content-Type": "text/plain;charset=UTF-8"
-          },
-          body: JSON.stringify({
-            action: "registerIndividual",
-            branchId: currentBranchId,
-            itemId: itemId,
-            identifier: identifier,
-            note: note
-          })
-        });
-
-        button.textContent = "登録結果を確認中...";
-
-        // 登録後に個体一覧を再取得
-        callApi(
-          {
-            action: "individuals",
-            branchId: currentBranchId
-          },
-          result => {
-
-            resetButton();
-
-            if (!result || result.success !== true) {
-              showError(
-                "登録後の確認に失敗しました。個体一覧を再読み込みしてください。"
-              );
-              return;
-            }
-
-            const newAsset = result.assets.find(
-              asset =>
-                asset.identifier === identifier &&
-                asset.itemId === itemId &&
-                !existingIds.has(asset.id)
-            );
-
-            // 登録前になかった個体IDが確認できなければ失敗
-            if (!newAsset) {
-              showError(
-                "新しい個体の登録を確認できませんでした。登録状況を確認してください。"
-              );
-              return;
-            }
-
-            // 登録成功時のみ入力欄をクリア
-            document.getElementById("individualItemSelect").value = "";
-            document.getElementById("individualIdentifier").value = "";
-            document.getElementById("individualNote").value = "";
-
-            loadInventory(currentBranchId);
-
-            showToast("個体を登録しました。");
-
-          }
-        );
-
-      } catch (error) {
-
-        resetButton();
-
-        showError(
-          "登録リクエストの送信に失敗しました。通信状態を確認してください。"
-        );
-
-      }
-
-    }
-  );
-
-}
-
-
-  // =====================================
-  // 在庫画面描画
-  // =====================================
-
-  function renderInventory(data) {
-
-    const body =
-      document.getElementById("inventoryBody");
-
-    body.replaceChildren();
-
-    let total = 0;
-    let loaned = 0;
-    let available = 0;
-
-    document.getElementById("branchLabel")
-      .textContent = data.branchName;
-
-    data.inventory.forEach(item => {
-
-      total += item.total;
-      loaned += item.loaned;
-      available += item.available;
-
-      const row = document.createElement("tr");
-
-      const values = [
-        { text: item.itemName, className: "item-name" },
-        { text: item.total, className: "number" },
-        { text: item.loaned, className: "number" },
-        { text: item.repair, className: "number" },
-        { text: item.available, className: "number available-number" }
-      ];
-
-      values.forEach(value => {
-
-        const cell = document.createElement("td");
-        const span = document.createElement("span");
-
-        span.textContent = value.text;
-        span.className = value.className;
-
-        cell.appendChild(span);
-
-        const unit = document.createElement("span");
-        unit.textContent = "点";
-        unit.className = "unit";
-
-        cell.appendChild(unit);
-
-        row.appendChild(cell);
-
-      });
-
-      body.appendChild(row);
-
-    });
-
-    document.getElementById("totalCount")
-  .textContent = total;
-
-document.getElementById("loanedCount")
-  .textContent = loaned;
-
-document.getElementById("availableCount")
-  .textContent = available;
-
-// 在庫調整欄にもデータを表示
-renderStockEditor(data);
-
-}
-　
-  // =====================================
-  // 在庫調整欄の描画
-  // =====================================
-
-  function renderStockEditor(data) {
-
-  const body = document.getElementById("stockEditBody");
-
-  body.replaceChildren();
-
-  // 元の在庫数を保存
-  originalStockData = data.inventory.map(item => ({
-    itemId: item.itemId,
-    itemName: item.itemName,
-    total: item.total,
-    loaned: item.loaned,
-    repair: item.repair
-  }));
-
-  currentBranchName = data.branchName;
-
-  data.inventory.forEach(item => {
-      const row = document.createElement("tr");
-
-      // 物品名
-      const nameCell = document.createElement("td");
-      const name = document.createElement("span");
-
-      name.textContent = item.itemName;
-      name.className = "item-name";
-
-      nameCell.appendChild(name);
-
-      // 総在庫数：入力可能
-      const totalCell = document.createElement("td");
-      const totalInput = document.createElement("input");
-
-      totalInput.type = "number";
-      totalInput.min = "0";
-      totalInput.step = "1";
-      totalInput.value = item.total;
-      totalInput.className = "stock-total-input";
-      totalInput.dataset.itemId = item.itemId;
-      totalInput.setAttribute(
-        "aria-label",
-        item.itemName + "の総在庫数"
-      );
-
-      totalCell.appendChild(totalInput);
-
-      // 貸出中：表示のみ
-      const loanedCell = document.createElement("td");
-
-      loanedCell.textContent = item.loaned + " 点";
-
-      // 整備中：表示のみ
-      const repairCell = document.createElement("td");
-
-      repairCell.textContent = item.repair + " 点";
-
-      // 利用可能数：自動計算
-      const availableCell = document.createElement("td");
-      const availableValue = document.createElement("span");
-
-      availableValue.className = "stock-edit-available";
-      availableValue.textContent =
-        item.total - item.loaned - item.repair;
-
-      availableCell.appendChild(availableValue);
-
-      // 入力時に利用可能数を再計算
-      totalInput.addEventListener("input", () => {
-
-  updateStockAvailable(
-    totalInput,
-    item.loaned,
-    item.repair,
-    availableValue
-  );
-
-  updateStockSaveButton();
-
-});
-      row.append(
-        nameCell,
-        totalCell,
-        loanedCell,
-        repairCell,
-        availableCell
-      );
-
-            body.appendChild(row);
-
-    });
-
-    // 最新データを表示した後、保存ボタンの状態を更新
-    updateStockSaveButton();
-
-  }
-
-
-  // =====================================
-  // 利用可能数の自動計算
-  // =====================================
-
-  function updateStockAvailable(
-    input,
-    loaned,
-    repair,
-    availableElement
-  ) {
-
-    const total = input.value === ""
-      ? NaN
-      : Number(input.value);
-
-    const valid =
-      Number.isSafeInteger(total) &&
-      total >= 0 &&
-      total >= loaned + repair;
-
-    input.classList.toggle("invalid", !valid);
-
-    availableElement.classList.toggle("invalid", !valid);
-
-    if (!valid) {
-
-      availableElement.textContent = "入力確認";
-
-      return;
-
-    }
-
-    availableElement.textContent =
-      total - loaned - repair;
-
-  }
-
-  
-// =====================================
-// 在庫変更ボタンの有効・無効判定
-// =====================================
-
-function updateStockSaveButton() {
-
-  const button = document.getElementById("saveStockButton");
-
-  const inputs = document.querySelectorAll(".stock-total-input");
-
-  let hasChange = false;
-  let allValid = true;
-
-  inputs.forEach(input => {
-
-    const item = originalStockData.find(
-      item => item.itemId === input.dataset.itemId
-    );
-
-    if (!item) {
-      allValid = false;
-      return;
-    }
-
-    const total = input.value === ""
-      ? NaN
-      : Number(input.value);
-
-    const valid =
-      Number.isSafeInteger(total) &&
-      total >= 0 &&
-      total >= item.loaned + item.repair;
-
-    if (!valid) {
-      allValid = false;
-    }
-
-    if (total !== item.total) {
-      hasChange = true;
-    }
-
-  });
-
-  button.disabled = !hasChange || !allValid;
-
-  button.textContent = "変更内容を確認";
-
-}
-
-
-// =====================================
-// 在庫変更確認画面を開く
-// =====================================
-
-function openStockConfirm() {
-
-  const inputs = document.querySelectorAll(".stock-total-input");
-
-  const body = document.getElementById("stockConfirmBody");
-
-  body.replaceChildren();
-
-  let changeCount = 0;
-
-  inputs.forEach(input => {
-
-    const item = originalStockData.find(
-      item => item.itemId === input.dataset.itemId
-    );
-
-    if (!item) return;
-
-    const newTotal = Number(input.value);
-
-    const difference = newTotal - item.total;
-
-    // 変更がない物品は表示しない
-    if (difference === 0) return;
-
-    changeCount++;
-
-    const row = document.createElement("tr");
-
-    const nameCell = document.createElement("td");
-    nameCell.textContent = item.itemName;
-
-    const oldCell = document.createElement("td");
-    oldCell.textContent = item.total + " 点";
-
-    const newCell = document.createElement("td");
-    newCell.textContent = newTotal + " 点";
-
-    const diffCell = document.createElement("td");
-    diffCell.className = "change-value";
-
-    const sign = difference > 0 ? "+" : "";
-
-    diffCell.textContent = sign + difference + " 点";
-
-    diffCell.classList.add(
-      difference > 0
-        ? "change-positive"
-        : "change-negative"
-    );
-
-    row.append(
-      nameCell,
-      oldCell,
-      newCell,
-      diffCell
-    );
-
-    body.appendChild(row);
-
-  });
-
-  if (changeCount === 0) {
-
-    showToast("変更された在庫数がありません。");
-
-    return;
-
-  }
-
-  document.getElementById("stockConfirmBranch")
-    .textContent = "対象拠点：" + currentBranchName;
-
-  const note = document.getElementById("stockNote").value.trim();
-
-  document.getElementById("stockConfirmNote")
-    .textContent = note
-      ? "備考：" + note
-      : "備考：なし";
-
-  document.getElementById("stockConfirmModal")
-    .classList.add("open");
-
-}
-
-
-// =====================================
-// 在庫数をGoogleスプレッドシートに保存
-// =====================================
-
-async function saveStock() {
-
-  const button = document.getElementById("finishStockConfirm");
-
-  const inputs = document.querySelectorAll(".stock-total-input");
-
-  const changes = [];
-
-  // 変更された物品だけを抽出
-  for (const input of inputs) {
-
-    const item = originalStockData.find(
-      item => item.itemId === input.dataset.itemId
-    );
-
-    if (!item) continue;
-
-    const newTotal = Number(input.value);
-
-    if (
-      !Number.isSafeInteger(newTotal) ||
-      newTotal < 0 ||
-      newTotal < item.loaned + item.repair
-    ) {
-      showToast("在庫数を確認してください。");
-      return;
-    }
-
-    if (newTotal !== item.total) {
-
-      changes.push({
-        itemId: item.itemId,
-        newTotal: newTotal
-      });
-
-    }
-
-  }
-
-  if (changes.length === 0) {
-    showToast("変更された在庫数がありません。");
-    closeStockConfirm();
-    return;
-  }
-
-  // 二重送信を防止
-  button.disabled = true;
-  button.textContent = "送信中...";
-
-  try {
-
-    // 複数物品を1回のPOSTで送信
-const payload = {
-  action: "adjustInventory",
-  branchId: currentBranchId,
-  changes: changes,
-  note: document.getElementById("stockNote").value.trim()
-};
-
-await fetch(API_URL, {
-  method: "POST",
-  mode: "no-cors",
-  headers: {
-    "Content-Type": "text/plain;charset=UTF-8"
-  },
-  body: JSON.stringify(payload)
-});
-
-button.textContent = "保存結果を確認中...";
-
-// 保存後に最新データを取得して照合
-callApi(
-  {
-    action: "inventory",
-    branchId: currentBranchId
-  },
-  data => {
-
-    button.disabled = false;
-    button.textContent = "確認しました";
-
-    if (!data || data.success !== true) {
-      showError("保存後の在庫確認に失敗しました。再読み込みしてください。");
-      return;
-    }
-
-    const allSaved = changes.every(change => {
-
-      const savedItem = data.inventory.find(
-        item => item.itemId === change.itemId
-      );
-
-      return savedItem &&
-        savedItem.total === change.newTotal;
-
-    });
-
-    if (!allSaved) {
-      showError(
-        "入力した在庫数と保存後の在庫数が一致しません。再確認してください。"
-      );
-      return;
-    }
-
-    closeStockConfirm();
-
-    renderInventory(data);
-
-    setConnection("接続中");
-
-    showStatus(
-      data.branchName + "の在庫数を保存・確認しました。"
-    );
-
-    showToast("在庫数を保存しました。");
-
-    document.getElementById("stockNote").value = "";
-
-  }
-);
-
-  } catch (error) {
-
-    showError(
-      "保存リクエストの送信に失敗しました。通信状態を確認してください。"
-    );
-
-    button.disabled = false;
-    button.textContent = "確認しました";
-
-  }
-
-}
-
-// =====================================
-// 在庫変更確認画面を閉じる
-// =====================================
-
-function closeStockConfirm() {
-
-  document.getElementById("stockConfirmModal")
-    .classList.remove("open");
-
-}
-
-
-// =====================================
-// スケルトン表示
-// =====================================
-
-function showSkeleton() {
-
-  const body =
-    document.getElementById("inventoryBody");
-
-    body.innerHTML = `
-      <tr>
-        <td colspan="5">
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-          <div class="skeleton"></div>
-        </td>
-      </tr>
-    `;
-
-    document.getElementById("branchLabel")
-      .textContent = "読み込み中";
-
-  }
-
-
-  // =====================================
-  // 通知・状態表示
-  // =====================================
-
-  function setConnection(message) {
-
-    const connection =
-      document.getElementById("connection");
-
-    connection.replaceChildren();
-
-    const dot = document.createElement("span");
-    dot.className = "connection-dot";
-
-    const label = document.createElement("span");
-    label.textContent = message;
-
-    connection.append(dot, label);
-
-  }
-
-
-  function showStatus(message) {
-
-    const status = document.getElementById("status");
-
-    status.className = "status-area";
-    status.textContent = message;
-
-  }
-
-
-  // =====================================
   // 貸出期間一覧（20日間ガントチャート）
   // =====================================
   function localDateString(date) {
@@ -3899,18 +2657,41 @@ function showSkeleton() {
     loadLoanTimeline(currentBranchId);
   }
 
-  function loadLoanTimeline(branchId) {
+  // 貸出期間一覧は同じデータを短時間キャッシュし、再表示を高速化する
+  let loanTimelineCache = null;
+  let loanTimelineCacheAt = 0;
+  let loanTimelineLoading = false;
+
+  function loadLoanTimeline(branchId, forceRefresh = false) {
     if (!branchId) return;
     const body = document.getElementById("loanTimelineBody");
+    const now = Date.now();
+
+    // 30秒以内のデータがあれば通信せず再描画
+    if (!forceRefresh && loanTimelineCache &&
+        loanTimelineCache.branchId === branchId &&
+        now - loanTimelineCacheAt < 30000) {
+      renderLoanTimeline(loanTimelineCache.items);
+      return;
+    }
+
+    // 同じ取得処理が進行中なら二重リクエストしない
+    if (loanTimelineLoading) return;
+
     body.innerHTML = '<p class="timeline-empty">貸出状況を読み込んでいます。</p>';
+    loanTimelineLoading = true;
     callApi({ action: "loanedItems", branchId }, data => {
+      loanTimelineLoading = false;
       if (!data || data.success !== true || !Array.isArray(data.items)) {
         body.innerHTML = '<p class="timeline-empty">貸出状況を取得できませんでした。再読み込みしてください。</p>';
         document.getElementById("timelineCount").textContent = "取得失敗";
         return;
       }
+      loanTimelineCache = { branchId, items: data.items };
+      loanTimelineCacheAt = Date.now();
       renderLoanTimeline(data.items);
     }, message => {
+      loanTimelineLoading = false;
       body.innerHTML = '<p class="timeline-empty">貸出状況の取得に失敗しました。</p>';
       document.getElementById("timelineCount").textContent = "取得失敗";
       showError("貸出期間一覧の取得に失敗しました。" + message);
