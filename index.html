@@ -2638,6 +2638,24 @@ async function registerReturn() {
 }
 
 
+  // =====================================
+  // 通知・状態表示
+  // =====================================
+
+  function setConnection(message) {
+    const connection = document.getElementById("connection");
+    connection.replaceChildren();
+
+    const dot = document.createElement("span");
+    dot.className = "connection-dot";
+
+    const label = document.createElement("span");
+    label.textContent = message;
+
+    connection.append(dot, label);
+  }
+
+
   // 貸出期間一覧（20日間ガントチャート）
   // =====================================
   function localDateString(date) {
