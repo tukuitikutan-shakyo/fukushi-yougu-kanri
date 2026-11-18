@@ -529,6 +529,27 @@
       min-width: 650px;
     }
 
+    .loan-group-toggle {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 0;
+      background: #f5f8fa;
+      color: var(--brand);
+      font: inherit;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .loan-group-toggle:hover { background: #edf3f7; }
+    .loan-group-toggle svg { width: 17px; height: 17px; transition: transform .18s ease; }
+    .loan-group-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+    .loan-group-count { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 500; }
+    .loan-group-row td { padding: 0 !important; border-bottom: 1px solid var(--border); }
+
     .loan-assets-table td {
       vertical-align: middle;
     }
@@ -2071,37 +2092,85 @@ function renderLoanAssets(assets) {
     return;
   }
 
+  // 用具名ごとにまとめ、各グループを折りたたんだ状態で表示
+  const groups = new Map();
   availableAssets.forEach(asset => {
-    const row = document.createElement("tr");
-
-    const selectCell = document.createElement("td");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.className = "loan-asset-check";
-    checkbox.value = asset.id;
-    checkbox.setAttribute("aria-label", asset.itemName + " " + asset.identifier + "を貸し出す");
-    selectCell.appendChild(checkbox);
-
-    const itemCell = document.createElement("td");
-    itemCell.textContent = asset.itemName;
-
-    const identifierCell = document.createElement("td");
-    identifierCell.textContent = asset.identifier;
-
-    const dueCell = document.createElement("td");
-    const dueInput = document.createElement("input");
-    dueInput.type = "date";
-    dueInput.className = "loan-due-date";
-    dueInput.setAttribute("aria-label", asset.identifier + "の返却予定日");
-    dueInput.required = true;
-    dueInput.min = document.getElementById("loanDate").value || "";
-    dueCell.appendChild(dueInput);
-
-    row.append(selectCell, itemCell, identifierCell, dueCell);
-    body.appendChild(row);
+    const name = asset.itemName || "名称未設定";
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(asset);
   });
-}
 
+  let groupIndex = 0;
+  groups.forEach((groupAssets, itemName) => {
+    const groupId = "loan-group-" + groupIndex++;
+
+    const groupRow = document.createElement("tr");
+    groupRow.className = "loan-group-row";
+    const groupCell = document.createElement("td");
+    groupCell.colSpan = 4;
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "loan-group-toggle";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-controls", groupId);
+
+    const icon = document.createElement("i");
+    icon.setAttribute("data-lucide", "chevron-right");
+    const label = document.createElement("span");
+    label.textContent = itemName;
+    const groupCount = document.createElement("span");
+    groupCount.className = "loan-group-count";
+    groupCount.textContent = groupAssets.length + "点";
+    toggle.append(icon, label, groupCount);
+
+    toggle.addEventListener("click", () => {
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", String(!expanded));
+      body.querySelectorAll('[data-loan-group="' + groupId + '"]').forEach(row => {
+        row.hidden = expanded;
+      });
+    });
+
+    groupCell.appendChild(toggle);
+    groupRow.appendChild(groupCell);
+    body.appendChild(groupRow);
+
+    groupAssets.forEach(asset => {
+      const row = document.createElement("tr");
+      row.hidden = true;
+      row.setAttribute("data-loan-group", groupId);
+
+      const selectCell = document.createElement("td");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.className = "loan-asset-check";
+      checkbox.value = asset.id;
+      checkbox.setAttribute("aria-label", asset.itemName + " " + asset.identifier + "を貸し出す");
+      selectCell.appendChild(checkbox);
+
+      const itemCell = document.createElement("td");
+      itemCell.textContent = asset.itemName;
+
+      const identifierCell = document.createElement("td");
+      identifierCell.textContent = asset.identifier;
+
+      const dueCell = document.createElement("td");
+      const dueInput = document.createElement("input");
+      dueInput.type = "date";
+      dueInput.className = "loan-due-date";
+      dueInput.setAttribute("aria-label", asset.identifier + "の返却予定日");
+      dueInput.required = true;
+      dueInput.min = document.getElementById("loanDate").value || "";
+      dueCell.appendChild(dueInput);
+
+      row.append(selectCell, itemCell, identifierCell, dueCell);
+      body.appendChild(row);
+    });
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
 
 // =====================================
 // 貸出登録
