@@ -666,14 +666,53 @@
     }
 
     .return-assets-table {
-      min-width: 560px;
+      min-width: 940px;
     }
 
-    .return-asset-check {
+    .return-asset-check,
+    .repair-item-check {
       width: 18px;
       height: 18px;
       accent-color: var(--brand);
       cursor: pointer;
+    }
+
+    .return-status-select,
+    .return-maintenance-input {
+      width: 100%;
+      min-width: 150px;
+      min-height: 38px;
+      padding: 0 9px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: white;
+      color: var(--text);
+      font: inherit;
+    }
+
+    .return-maintenance-input:disabled {
+      background: #f3f5f7;
+      color: #9aa5af;
+      cursor: not-allowed;
+    }
+
+    /* 整備管理 */
+    .repair-section {
+      margin: 0 0 28px;
+    }
+
+    .repair-assets-table {
+      min-width: 820px;
+    }
+
+    .repair-completion-date {
+      min-width: 155px;
+      min-height: 38px;
+      padding: 0 8px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font: inherit;
+      color: var(--text);
     }
 
     .unit {
@@ -851,6 +890,78 @@
         font-size: 11px;
       }
     }
+
+
+    /* ヘッダー内の拠点・再読み込み操作 */
+    .header-tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-tools .field { width: 190px; max-width: 190px; }
+    .header-tools .field label { margin-bottom: 3px; }
+    .header-tools select { height: 38px; }
+    .header-tools .select-wrap i { top: 10px; }
+    .header-tools .refresh-button { height: 38px; padding: 0 11px; white-space: nowrap; }
+
+    /* ページ切り替えタブ */
+    .page-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin: 0 0 22px;
+      padding: 5px;
+      background: #eaf0f4;
+      border-radius: 10px;
+      scrollbar-width: thin;
+    }
+    .page-tab {
+      flex: 1 0 auto;
+      min-height: 42px;
+      padding: 0 18px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: #526575;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .page-tab:hover { background: rgba(255,255,255,.65); }
+    .page-tab.active {
+      background: white;
+      color: var(--brand);
+      box-shadow: 0 1px 3px rgba(20,35,48,.10);
+    }
+    [data-tab-page] { display: none; }
+    [data-tab-page].active { display: block; }
+    @media (max-width: 900px) {
+      .header-inner { padding-left: 16px; padding-right: 16px; }
+      .header-tools { gap: 7px; }
+      .header-tools .field { width: 150px; max-width: 150px; }
+      .header-tools .refresh-button { font-size: 12px; padding: 0 8px; }
+      .connection { display: none; }
+    }
+    @media (max-width: 700px) {
+      .header { height: auto; min-height: 64px; }
+      .header-inner { min-height: 64px; height: auto; gap: 8px; }
+      .brand { gap: 7px; font-size: 13px; }
+      .brand-mark { width: 32px; height: 32px; }
+      .brand small { display: none; }
+      .header-right { gap: 7px; }
+      .header-tools { gap: 6px; }
+      .header-tools .field { width: 116px; max-width: 116px; }
+      .header-tools .field label { font-size: 10px; }
+      .header-tools select { height: 34px; padding-left: 8px; padding-right: 25px; font-size: 12px; }
+      .header-tools .select-wrap i { right: 6px; top: 9px; width: 15px; height: 15px; }
+      .header-tools .refresh-button { width: 36px; min-width: 36px; height: 34px; padding: 0; justify-content: center; font-size: 0; }
+      .header-tools .refresh-button i { width: 17px; height: 17px; }
+      .menu-button { width: 34px; height: 34px; }
+      .page-tabs { margin-bottom: 18px; }
+      .page-tab { min-height: 40px; padding: 0 13px; font-size: 13px; }
+    }
+
   </style>
 </head>
 
@@ -864,11 +975,26 @@
       </div>
       <span>福祉用具貸出管理</span>
       <small style="font-size:10px; color:var(--muted); font-weight:500;">
-  update11181450
+  update11182625
 </small>
     </div>
     
     <div class="header-right">
+      <div class="header-tools">
+        <div class="field">
+          <label for="branchSelect">管理する拠点</label>
+          <div class="select-wrap">
+            <select id="branchSelect" disabled>
+              <option value="">拠点情報を読み込み中...</option>
+            </select>
+            <i data-lucide="chevron-down"></i>
+          </div>
+        </div>
+        <button class="refresh-button" id="refreshButton" disabled title="在庫を再読み込み">
+          <i data-lucide="refresh-cw"></i>
+          在庫を再読み込み
+        </button>
+      </div>
       <div class="connection" id="connection">
         <span class="connection-dot"></span>
         <span>接続確認中</span>
@@ -884,14 +1010,11 @@
 <div class="drawer-overlay" id="drawerOverlay">
   <nav class="drawer">
     <div class="drawer-title">メニュー</div>
-    <a class="drawer-link" href="#loanRegistration"
-      onclick="closeDrawer()">貸出登録</a>
-    <a class="drawer-link" href="#returnRegistration"
-      onclick="closeDrawer()">返却登録</a>
-    <a class="drawer-link" href="#extensionRegistration"
-      onclick="closeDrawer()">延長受付</a>
-    <a class="drawer-link" href="#inventory"
-      onclick="closeDrawer()">在庫管理</a>
+    <a class="drawer-link" href="#" onclick="switchPageTab('loan'); closeDrawer(); return false;">貸出登録</a>
+    <a class="drawer-link" href="#" onclick="switchPageTab('return'); closeDrawer(); return false;">返却登録</a>
+    <a class="drawer-link" href="#" onclick="switchPageTab('extension'); closeDrawer(); return false;">延長受付</a>
+    <a class="drawer-link" href="#" onclick="switchPageTab('repair'); closeDrawer(); return false;">整備管理</a>
+    <a class="drawer-link" href="#" onclick="switchPageTab('inventory'); closeDrawer(); return false;">物品在庫一覧</a>
     <a class="drawer-link" href="#summary"
       onclick="closeDrawer()">在庫概要</a>
     <a class="drawer-link" href="#footer"
@@ -910,25 +1033,18 @@
     <p>拠点ごとの福祉用具の保有状況を確認できます。</p>
   </div>
 
-  <section class="toolbar">
-    <div class="field">
-      <label for="branchSelect">管理する拠点</label>
-      <div class="select-wrap">
-        <select id="branchSelect" disabled>
-          <option value="">拠点情報を読み込み中...</option>
-        </select>
-        <i data-lucide="chevron-down"></i>
-      </div>
-    </div>
+  <nav class="page-tabs" role="tablist" aria-label="管理画面">
+    <button type="button" class="page-tab active" role="tab" aria-selected="true" data-tab-target="loan">貸出登録</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="return">返却登録</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="extension">延長受付</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="repair">整備管理</button>
+    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="inventory">物品在庫一覧</button>
+  </nav>
 
-    <button class="refresh-button" id="refreshButton" disabled>
-      <i data-lucide="refresh-cw"></i>
-      在庫を再読み込み
-    </button>
-  </section>
+
 
   <!-- 貸出登録 -->
-  <section id="loanRegistration" class="loan-section">
+  <section id="loanRegistration" class="loan-section active" data-tab-page="loan">
     <div class="section-heading">
       <h2>貸出登録</h2>
       <span id="loanAssetCount">利用可能な個体を読み込み中</span>
@@ -996,7 +1112,7 @@
   </section>
 
   <!-- 返却登録 -->
-  <section id="returnRegistration" class="return-section">
+  <section id="returnRegistration" class="return-section" data-tab-page="return">
     <div class="section-heading">
       <h2>返却登録</h2>
       <span id="returnAssetCount">貸出中の個体を読み込み中</span>
@@ -1013,7 +1129,7 @@
       <div class="loan-list-heading">
         <div>
           <h3>返却する福祉用具</h3>
-          <p>返却された個体にチェックを入れてください。通常返却として利用可能に戻します。</p>
+          <p>返却する個体を選び、返却区分を指定してください。整備が必要な個体は整備中として管理します。</p>
         </div>
         <button type="button" class="refresh-button" id="refreshReturnAssets">
           <i data-lucide="refresh-cw"></i>
@@ -1028,11 +1144,13 @@
               <th>選択</th>
               <th>福祉用具</th>
               <th>識別ネーム</th>
-              <th>状態</th>
+              <th>現在の状態</th>
+              <th>返却区分</th>
+              <th>整備内容</th>
             </tr>
           </thead>
           <tbody id="returnAssetBody">
-            <tr><td colspan="4">貸出中の個体情報を読み込んでいます。</td></tr>
+            <tr><td colspan="6">貸出中の個体情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -1044,7 +1162,7 @@
       </div>
 
       <div class="loan-submit-row">
-        <span class="loan-help">破損・整備が必要な用具の返却処理は、整備機能追加後に対応します。</span>
+        <span class="loan-help">整備が必要な個体は、利用可能数に戻さず整備中として登録します。</span>
         <button type="button" class="loan-submit-button" id="registerReturnButton" disabled>
           <i data-lucide="clipboard-check"></i>
           返却を登録
@@ -1054,7 +1172,7 @@
   </section>
 
   <!-- 延長受付 -->
-  <section id="extensionRegistration" class="extension-section">
+  <section id="extensionRegistration" class="extension-section" data-tab-page="extension">
     <div class="section-heading">
       <h2>延長受付</h2>
       <span id="extensionAssetCount">貸出中の個体を読み込み中</span>
@@ -1118,7 +1236,67 @@
     </div>
   </section>
 
-  <section class="summary" id="summary">
+  <!-- 整備管理 -->
+  <section id="repairManagement" class="repair-section" data-tab-page="repair">
+    <div class="section-heading">
+      <h2>整備管理</h2>
+      <span id="repairAssetCount">整備中の個体を読み込み中</span>
+    </div>
+
+    <div class="panel loan-panel">
+      <div class="loan-form-grid">
+        <div class="field">
+          <label for="repairCompletionDate">整備完了日</label>
+          <input id="repairCompletionDate" class="loan-input" type="date" required>
+        </div>
+      </div>
+
+      <div class="loan-list-heading">
+        <div>
+          <h3>整備中の福祉用具</h3>
+          <p>整備が完了した個体にチェックを入れて、利用可能へ戻します。</p>
+        </div>
+        <button type="button" class="refresh-button" id="refreshRepairAssets">
+          <i data-lucide="refresh-cw"></i>
+          整備中一覧を更新
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="inventory-table repair-assets-table">
+          <thead>
+            <tr>
+              <th>選択</th>
+              <th>福祉用具</th>
+              <th>識別ネーム</th>
+              <th>整備受付日</th>
+              <th>整備内容</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody id="repairAssetBody">
+            <tr><td colspan="6">整備中の個体情報を読み込んでいます。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="loan-note-field">
+        <label for="repairCompletionNote">完了時の備考（任意）</label>
+        <input id="repairCompletionNote" class="loan-input" type="text" maxlength="500"
+          placeholder="整備完了に関する連絡事項など">
+      </div>
+
+      <div class="loan-submit-row">
+        <span class="loan-help">整備完了後は、整備中数が減り、利用可能数が増えます。</span>
+        <button type="button" class="loan-submit-button" id="completeRepairButton" disabled>
+          <i data-lucide="wrench"></i>
+          整備完了を登録
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="summary" id="summary" data-tab-page="inventory">
     <div class="summary-card">
       <div class="summary-label">総在庫数</div>
       <div class="summary-number">
@@ -1144,7 +1322,7 @@
     </div>
   </section>
 
-  <section id="inventory">
+  <section id="inventory" data-tab-page="inventory">
     <div class="section-heading">
       <h2>物品別在庫一覧</h2>
       <span id="branchLabel">拠点を選択してください</span>
@@ -1176,7 +1354,7 @@
     </div>
   </section>
 
-  <section id="stockEditor" style="margin-top: 28px;">
+  <section id="stockEditor" data-tab-page="inventory" style="margin-top: 28px;">
     <div class="section-heading">
       <h2>在庫数の調整</h2>
       <span>拠点ごとに登録</span>
@@ -1238,7 +1416,7 @@
   </section>
 
   <!-- 個体管理 -->
-  <section id="individualManagement" style="margin-top: 28px;">
+  <section id="individualManagement" data-tab-page="inventory" style="margin-top: 28px;">
     <div class="section-heading">
       <h2>個体管理</h2>
       <span id="individualCount">0点</span>
@@ -1413,6 +1591,7 @@ let masterCategories = [];
 let loanSubmitting = false;
 let returnSubmitting = false;
 let extensionSubmitting = false;
+let repairSubmitting = false;
 
   const branchSelect =
     document.getElementById("branchSelect");
@@ -1498,6 +1677,23 @@ let extensionSubmitting = false;
       lucide.createIcons();
     }
 
+    // タブ切り替え
+    const tabButtons = Array.from(document.querySelectorAll("[data-tab-target]"));
+    const tabPages = Array.from(document.querySelectorAll("[data-tab-page]"));
+    tabButtons.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.dataset.tabTarget;
+        tabButtons.forEach(button => {
+          const selected = button === tab;
+          button.classList.toggle("active", selected);
+          button.setAttribute("aria-selected", selected ? "true" : "false");
+        });
+        tabPages.forEach(page => {
+          page.classList.toggle("active", page.dataset.tabPage === target);
+        });
+      });
+    });
+
     document.getElementById("menuButton")
       .addEventListener("click", openDrawer);
 
@@ -1553,6 +1749,12 @@ document.getElementById("registerExtensionButton")
 document.getElementById("refreshExtensionAssets")
   .addEventListener("click", () => loadExtensionAssets(currentBranchId));
 
+document.getElementById("refreshRepairAssets")
+  .addEventListener("click", () => loadRepairAssets(currentBranchId));
+
+document.getElementById("completeRepairButton")
+  .addEventListener("click", completeRepairRegistration);
+
 document.getElementById("loanDate")
   .addEventListener("change", () => {
     const loanDate = document.getElementById("loanDate").value;
@@ -1576,6 +1778,11 @@ loadMasterData();
   // =====================================
   // ドロワー
   // =====================================
+
+  function switchPageTab(target) {
+    const tab = document.querySelector(`[data-tab-target="${target}"]`);
+    if (tab) tab.click();
+  }
 
   function openDrawer() {
     document.getElementById("drawerOverlay")
@@ -1678,6 +1885,10 @@ loadMasterData();
           now.getFullYear() + "-" +
           String(now.getMonth() + 1).padStart(2, "0") + "-" +
           String(now.getDate()).padStart(2, "0");
+        document.getElementById("repairCompletionDate").value =
+          now.getFullYear() + "-" +
+          String(now.getMonth() + 1).padStart(2, "0") + "-" +
+          String(now.getDate()).padStart(2, "0");
 
         // 在庫再読み込みは有効化
 refreshButton.disabled = false;
@@ -1744,6 +1955,8 @@ const itemSelect =
         loadIndividualAssets(branchId);
         // 延長受付用の貸出中物品を取得
         loadExtensionAssets(branchId);
+        // 整備中の個体を取得
+        loadRepairAssets(branchId);
 
         setConnection("接続中");
 
@@ -2015,7 +2228,7 @@ async function registerLoan() {
 
 
 // =====================================
-// 返却中個体一覧の描画
+// 返却対象個体一覧の描画
 // =====================================
 
 function renderReturnAssets(assets) {
@@ -2036,7 +2249,7 @@ function renderReturnAssets(assets) {
   if (loanedAssets.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 4;
+    cell.colSpan = 6;
     cell.textContent = "現在、返却対象の個体はありません。";
     row.appendChild(cell);
     body.appendChild(row);
@@ -2064,7 +2277,45 @@ function renderReturnAssets(assets) {
     const statusCell = document.createElement("td");
     statusCell.textContent = "貸出中";
 
-    row.append(selectCell, itemCell, identifierCell, statusCell);
+    const returnTypeCell = document.createElement("td");
+    const returnType = document.createElement("select");
+    returnType.className = "return-status-select";
+    returnType.setAttribute("aria-label", asset.identifier + "の返却区分");
+    [
+      { value: "通常返却", label: "通常返却" },
+      { value: "整備が必要", label: "整備が必要" }
+    ].forEach(optionData => {
+      const option = document.createElement("option");
+      option.value = optionData.value;
+      option.textContent = optionData.label;
+      returnType.appendChild(option);
+    });
+    returnTypeCell.appendChild(returnType);
+
+    const maintenanceCell = document.createElement("td");
+    const maintenanceInput = document.createElement("input");
+    maintenanceInput.type = "text";
+    maintenanceInput.className = "return-maintenance-input";
+    maintenanceInput.maxLength = 300;
+    maintenanceInput.placeholder = "例：ブレーキの調整";
+    maintenanceInput.disabled = true;
+    maintenanceInput.setAttribute("aria-label", asset.identifier + "の整備内容");
+    maintenanceCell.appendChild(maintenanceInput);
+
+    returnType.addEventListener("change", () => {
+      const needsRepair = returnType.value === "整備が必要";
+      maintenanceInput.disabled = !needsRepair;
+      if (!needsRepair) maintenanceInput.value = "";
+    });
+
+    row.append(
+      selectCell,
+      itemCell,
+      identifierCell,
+      statusCell,
+      returnTypeCell,
+      maintenanceCell
+    );
     body.appendChild(row);
   });
 }
@@ -2102,10 +2353,17 @@ async function registerReturn() {
     return;
   }
 
-  const items = selected.map(checkbox => ({
-    loanItemId: checkbox.value,
-    individualId: checkbox.dataset.individualId
-  }));
+  const items = selected.map(checkbox => {
+    const row = checkbox.closest("tr");
+    const returnStatus = row.querySelector(".return-status-select").value;
+    const maintenanceContent = row.querySelector(".return-maintenance-input").value.trim();
+    return {
+      loanItemId: checkbox.value,
+      individualId: checkbox.dataset.individualId,
+      returnStatus: returnStatus,
+      maintenanceContent: maintenanceContent
+    };
+  });
 
   returnSubmitting = true;
   button.disabled = true;
@@ -2122,7 +2380,11 @@ async function registerReturn() {
         returnDate: returnDate,
         staffId: "",
         note: note,
-        items: items.map(item => ({ loanItemId: item.loanItemId }))
+        items: items.map(item => ({
+          loanItemId: item.loanItemId,
+          returnStatus: item.returnStatus,
+          maintenanceContent: item.maintenanceContent
+        }))
       })
     });
 
@@ -2144,7 +2406,10 @@ async function registerReturn() {
         const assetsById = new Map(data.assets.map(asset => [asset.id, asset]));
         const allReturned = items.every(item => {
           const asset = assetsById.get(item.individualId);
-          return asset && asset.status === "利用可能" && !asset.currentLoanItemId;
+          const expectedStatus = item.returnStatus === "整備が必要"
+            ? "整備中"
+            : "利用可能";
+          return asset && asset.status === expectedStatus && !asset.currentLoanItemId;
         });
 
         if (!allReturned) {
@@ -2155,7 +2420,11 @@ async function registerReturn() {
 
         document.getElementById("returnNote").value = "";
         loadInventory(currentBranchId);
-        showToast(items.length + "点の返却を登録しました。");
+        const repairCount = items.filter(item => item.returnStatus === "整備が必要").length;
+        const normalCount = items.length - repairCount;
+        showToast(
+          "返却 " + items.length + "点を登録しました（通常 " + normalCount + "点・整備 " + repairCount + "点）。"
+        );
       },
       message => {
         returnSubmitting = false;
@@ -2170,6 +2439,179 @@ async function registerReturn() {
     button.disabled = false;
     button.textContent = "返却を登録";
     showError("返却登録の送信に失敗しました。通信状態を確認してください。");
+  }
+}
+
+
+// =====================================
+// 整備中一覧の取得
+// =====================================
+
+function loadRepairAssets(branchId) {
+  if (!branchId) return;
+
+  callApi(
+    { action: "repairItems", branchId: branchId },
+    data => {
+      if (!data || data.success !== true) {
+        const body = document.getElementById("repairAssetBody");
+        body.replaceChildren();
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 6;
+        cell.textContent = data?.message || "整備中一覧を取得できませんでした。";
+        row.appendChild(cell);
+        body.appendChild(row);
+        document.getElementById("repairAssetCount").textContent = "取得失敗";
+        document.getElementById("completeRepairButton").disabled = true;
+        return;
+      }
+      renderRepairAssets(Array.isArray(data.items) ? data.items : []);
+    },
+    message => showError("整備中一覧の取得に失敗しました。" + message)
+  );
+}
+
+
+// =====================================
+// 整備中一覧の描画
+// =====================================
+
+function renderRepairAssets(items) {
+  const body = document.getElementById("repairAssetBody");
+  const count = document.getElementById("repairAssetCount");
+  const button = document.getElementById("completeRepairButton");
+
+  body.replaceChildren();
+  count.textContent = "整備中 " + items.length + "点";
+  button.disabled = items.length === 0 || repairSubmitting;
+
+  if (items.length === 0) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 6;
+    cell.textContent = "現在、整備中の個体はありません。";
+    row.appendChild(cell);
+    body.appendChild(row);
+    return;
+  }
+
+  items.forEach(item => {
+    const row = document.createElement("tr");
+
+    const selectCell = document.createElement("td");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "repair-item-check";
+    checkbox.value = item.maintenanceId;
+    checkbox.setAttribute("aria-label", item.itemName + " " + item.identifier + "の整備を完了する");
+    selectCell.appendChild(checkbox);
+
+    const itemCell = document.createElement("td");
+    itemCell.textContent = item.itemName;
+
+    const identifierCell = document.createElement("td");
+    identifierCell.textContent = item.identifier;
+
+    const dateCell = document.createElement("td");
+    dateCell.textContent = item.receptionDate || "未登録";
+
+    const contentCell = document.createElement("td");
+    contentCell.textContent = item.maintenanceContent || "未記入";
+
+    const noteCell = document.createElement("td");
+    noteCell.textContent = item.note || "－";
+
+    row.append(selectCell, itemCell, identifierCell, dateCell, contentCell, noteCell);
+    body.appendChild(row);
+  });
+}
+
+
+// =====================================
+// 整備完了登録
+// =====================================
+
+async function completeRepairRegistration() {
+  if (repairSubmitting) return;
+
+  const button = document.getElementById("completeRepairButton");
+  const completionDate = document.getElementById("repairCompletionDate").value;
+  const note = document.getElementById("repairCompletionNote").value.trim();
+
+  if (!completionDate) {
+    showToast("整備完了日を入力してください。");
+    document.getElementById("repairCompletionDate").focus();
+    return;
+  }
+
+  const selected = Array.from(
+    document.querySelectorAll("#repairAssetBody .repair-item-check:checked")
+  );
+
+  if (selected.length === 0) {
+    showToast("整備完了にする個体を選択してください。");
+    return;
+  }
+
+  const maintenanceIds = selected.map(checkbox => checkbox.value);
+  repairSubmitting = true;
+  button.disabled = true;
+  button.textContent = "整備完了を登録中...";
+
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify({
+        action: "completeRepair",
+        completionDate: completionDate,
+        staffId: "",
+        note: note,
+        items: maintenanceIds.map(maintenanceId => ({ maintenanceId: maintenanceId }))
+      })
+    });
+
+    button.textContent = "完了結果を確認中...";
+
+    callApi(
+      { action: "repairItems", branchId: currentBranchId },
+      data => {
+        repairSubmitting = false;
+        button.textContent = "整備完了を登録";
+
+        if (!data || data.success !== true || !Array.isArray(data.items)) {
+          button.disabled = false;
+          showError("整備完了後の一覧を確認できませんでした。再読み込みしてください。");
+          return;
+        }
+
+        const stillRepairing = new Set(data.items.map(item => item.maintenanceId));
+        const allCompleted = maintenanceIds.every(id => !stillRepairing.has(id));
+
+        if (!allCompleted) {
+          button.disabled = false;
+          showError("整備完了を確認できませんでした。整備中一覧を確認してください。");
+          return;
+        }
+
+        document.getElementById("repairCompletionNote").value = "";
+        loadInventory(currentBranchId);
+        showToast(maintenanceIds.length + "点の整備完了を登録しました。");
+      },
+      message => {
+        repairSubmitting = false;
+        button.disabled = false;
+        button.textContent = "整備完了を登録";
+        showError("整備完了後の確認に失敗しました。" + message);
+      }
+    );
+  } catch (error) {
+    repairSubmitting = false;
+    button.disabled = false;
+    button.textContent = "整備完了を登録";
+    showError("整備完了の送信に失敗しました。通信状態を確認してください。");
   }
 }
 
