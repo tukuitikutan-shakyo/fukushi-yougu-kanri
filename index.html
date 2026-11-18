@@ -1106,6 +1106,7 @@ loadMasterData();
           showError(data?.message || "マスター取得に失敗しました。");
           return;
         }
+        console.log("マスターデータ確認：", data);
 
         if (!Array.isArray(data.bases) || data.bases.length === 0) {
           showError("有効な拠点が登録されていません。");
