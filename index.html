@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#ffffff">
   <title>福祉用具貸出管理システム</title>
 
-  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
 
   <style>
     :root {
@@ -990,10 +990,79 @@
     .timeline-bar-returned::after { border-left-color:#fff; }
     @media(max-width:700px) { .timeline-head,.timeline-row { grid-template-columns:145px minmax(670px,1fr); } .timeline-toolbar { align-items:stretch; } .timeline-actions button { flex:1; } }
 
+
+
+    /* 通信中は画面全体を覆い、操作を一時的に停止する */
+    .global-loading {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.84);
+      cursor: wait;
+    }
+
+    .global-loading.active {
+      display: flex;
+    }
+
+    .global-loading-box {
+      min-width: 220px;
+      padding: 28px 36px;
+      text-align: center;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    .global-loading-box p {
+      margin: 14px 0 4px;
+      color: var(--brand);
+      font-weight: 700;
+    }
+
+    .global-loading-box small {
+      color: var(--muted);
+    }
+
+    .loading-spinner {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto;
+      border: 4px solid #e2e8ee;
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: loading-spin 0.8s linear infinite;
+    }
+
+    @keyframes loading-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 拠点はURLで固定されるため、選択操作を無効化 */
+    #branchSelect {
+      pointer-events: none;
+      cursor: default;
+      background-color: #f5f7f9;
+      color: var(--text);
+      opacity: 1;
+    }
+
 </style>
 </head>
 
 <body>
+
+<div id="globalLoading" class="global-loading" aria-live="polite" aria-hidden="true">
+  <div class="global-loading-box">
+    <div class="loading-spinner" aria-hidden="true"></div>
+    <p>読み込み中です...</p>
+    <small>しばらくお待ちください</small>
+  </div>
+</div>
 
 <header class="header">
   <div class="header-inner">
@@ -1015,7 +1084,6 @@
             <select id="branchSelect" disabled>
               <option value="">拠点情報を読み込み中...</option>
             </select>
-            <i data-lucide="chevron-down"></i>
           </div>
         </div>
         <button class="refresh-button" id="refreshButton" disabled title="在庫を再読み込み">
@@ -1713,6 +1781,51 @@ let currentBranchId = urlParams.get("branch") || "";
 let requestTimer = null;
 let toastTimer = null;
 let requestNumber = 0;
+
+// 通信中の件数をまとめて管理し、通信がすべて終わるまで画面をロック
+let activeLoadingCount = 0;
+
+function updateGlobalLoading() {
+  const overlay = document.getElementById("globalLoading");
+  if (!overlay) return;
+
+  const loading = activeLoadingCount > 0;
+  overlay.classList.toggle("active", loading);
+  overlay.setAttribute("aria-hidden", String(!loading));
+  document.body.setAttribute("aria-busy", String(loading));
+
+  // オーバーレイ以外を inert にして、キーボード操作も一時停止
+  Array.from(document.body.children).forEach(element => {
+    if (element.id !== "globalLoading") {
+      element.inert = loading;
+    }
+  });
+}
+
+function startGlobalLoading() {
+  activeLoadingCount += 1;
+  updateGlobalLoading();
+}
+
+function endGlobalLoading() {
+  activeLoadingCount = Math.max(0, activeLoadingCount - 1);
+  updateGlobalLoading();
+}
+
+// fetch() を使うPOST通信も共通の読み込み表示で管理
+const nativeFetch = window.fetch.bind(window);
+window.fetch = function (...args) {
+  startGlobalLoading();
+  try {
+    return nativeFetch(...args).finally(() => {
+      endGlobalLoading();
+    });
+  } catch (error) {
+    endGlobalLoading();
+    throw error;
+  }
+};
+
 // 現在読み込んでいる在庫データ
 let originalStockData = [];
 let currentBranchName = "";
@@ -1733,6 +1846,8 @@ let extensionSubmitting = false;
   // =====================================
 
   function callApi(params, onSuccess, onError) {
+
+    startGlobalLoading();
 
     const callbackName = "apiCallback_" + (++requestNumber);
 
@@ -1756,36 +1871,46 @@ let extensionSubmitting = false;
       script.remove();
 
       delete window[callbackName];
+
+      endGlobalLoading();
     }
 
     // GASからの応答を受け取る
     window[callbackName] = data => {
-      cleanup();
-
-      if (typeof onSuccess === "function") {
-        onSuccess(data);
+      try {
+        if (typeof onSuccess === "function") {
+          onSuccess(data);
+        }
+      } finally {
+        cleanup();
       }
     };
 
     // 通信エラー
     script.onerror = () => {
-      cleanup();
       const message = "サーバーとの通信に失敗しました。";
-      if (typeof onError === "function") {
-        onError(message);
-      } else {
-        showError(message);
+      try {
+        if (typeof onError === "function") {
+          onError(message);
+        } else {
+          showError(message);
+        }
+      } finally {
+        cleanup();
       }
     };
 
     // タイムアウト
     const timeoutId = setTimeout(() => {
-      cleanup();
       const message = "サーバーから応答がありません。時間をおいて再試行してください。";
-      if (typeof onError === "function") {
-        onError(message);
-      } else {
-        showError(message);
+      try {
+        if (typeof onError === "function") {
+          onError(message);
+        } else {
+          showError(message);
+        }
+      } finally {
+        cleanup();
       }
     }, 15000);
 
@@ -2093,11 +2218,6 @@ loadInventory(currentBranchId);
 
                 renderInventory(data);
 
-        // 登録済み物品一覧を取得
-        loadIndividualAssets(branchId);
-        // 延長受付用の貸出中物品を取得
-        loadExtensionAssets(branchId);
-
         setConnection("接続完了");
 
         showStatus(
@@ -2108,6 +2228,10 @@ loadInventory(currentBranchId);
 
       }
     );
+
+    // 在庫情報と関連一覧を並行取得して、待ち時間を短縮
+    loadIndividualAssets(branchId);
+    loadExtensionAssets(branchId);
 
   }
   // =====================================
