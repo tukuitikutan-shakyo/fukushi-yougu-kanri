@@ -291,7 +291,7 @@
   border-color: #f0b4a8;
   background: #fff7f5;
 }
-  
+
 .summary-warning .summary-label,
 .summary-warning .summary-number {
   color: #c62828;
@@ -1183,24 +1183,43 @@
     width: 100%;
   }
 }
-/* 返却期限超過の警告表示 */
-.timeline-overdue-badge {
-  display: inline-flex;
-  align-self: flex-start;
-  width: max-content;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-size: 11px;
-  font-weight: 700;
-}
 
-.timeline-bar-overdue {
-  box-shadow: inset 0 0 0 1px #991b1b;
-}
+
+    /* 返却期限超過の警告表示 */
+    .timeline-name .timeline-overdue-badge {
+      display: inline-flex;
+      align-self: flex-start;
+      width: max-content;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .timeline-bar-overdue {
+      box-shadow: inset 0 0 0 1px #991b1b;
+    }
+
+    /* 延長回数バッジ */
+    .timeline-name .extension-count-badge,
+    .extension-count-badge {
+      display: inline-flex;
+      align-items: center;
+      width: max-content;
+      margin-left: 6px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eaf2ff;
+      color: #2457a6;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
 </style>
-
 </head>
 
 <body>
@@ -3011,11 +3030,16 @@ function renderExtensionAssets(items) {
   const count = document.getElementById("extensionAssetCount");
   const button = document.getElementById("registerExtensionButton");
 
-  body.replaceChildren();
-  count.textContent = "延長対象 " + items.length + "点";
-  button.disabled = items.length === 0 || extensionSubmitting;
+  // 履歴表示用APIには返却済みも含まれるため、延長対象は貸出中だけに限定する。
+  const activeItems = (Array.isArray(items) ? items : []).filter(item =>
+    item.status === "貸出中"
+  );
 
-  if (items.length === 0) {
+  body.replaceChildren();
+  count.textContent = "延長対象 " + activeItems.length + "点";
+  button.disabled = activeItems.length === 0 || extensionSubmitting;
+
+  if (activeItems.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 5;
@@ -3025,7 +3049,7 @@ function renderExtensionAssets(items) {
     return;
   }
 
-  items.forEach(item => {
+  activeItems.forEach(item => {
     const row = document.createElement("tr");
 
     const selectCell = document.createElement("td");
@@ -3042,6 +3066,13 @@ function renderExtensionAssets(items) {
 
     const identifierCell = document.createElement("td");
     identifierCell.textContent = item.identifier;
+    const extensionCount = Number(item.extensionCount || 0);
+    if (extensionCount > 0) {
+      const badge = document.createElement("span");
+      badge.className = "extension-count-badge";
+      badge.textContent = "延長 " + extensionCount + "回";
+      identifierCell.appendChild(badge);
+    }
 
     const currentDateCell = document.createElement("td");
     currentDateCell.className = "extension-current-date";
@@ -3678,6 +3709,15 @@ function renderLoanTimeline(items) {
   name.appendChild(badge);
 
 }
+
+      const extensionCount = Number(item.extensionCount || 0);
+      if (extensionCount > 0) {
+        const extensionBadge = document.createElement("span");
+        extensionBadge.className = "extension-count-badge";
+        extensionBadge.textContent = "延長 " + extensionCount + "回";
+        name.appendChild(extensionBadge);
+      }
+
       const track=document.createElement("div"); track.className="timeline-track";
       const loan=new Date(item.loanDate+"T00:00:00");
       const due=new Date(finishDate+"T00:00:00");
@@ -3987,6 +4027,129 @@ if (isOverdue) {
     oldTable.replaceWith(table);
   }
 
+  // 年度集計：月別と同じグループ表示にし、物品名・拠点名の繰り返しを抑える。
+  function renderAnnualCompactReportTable(tableId, data) {
+    const oldTable = document.getElementById(tableId);
+    const branches = Array.isArray(data.branches) ? data.branches : [];
+    const items = Array.isArray(data.items) ? data.items : [];
+    const categories = Array.isArray(data.categories) ? data.categories : [];
+    const annualIndex = buildReportIndex(data.annual || []);
+
+    const table = document.createElement("table");
+    table.id = tableId;
+    table.className = "inventory-table";
+    table.style.minWidth = "1800px";
+
+    const caption = document.createElement("caption");
+    caption.textContent = "令和" + (data.fiscalYear - 2018) + "年度 福祉用具無料貸出事業";
+    caption.style.padding = "12px";
+    caption.style.fontWeight = "700";
+    caption.style.textAlign = "left";
+    table.appendChild(caption);
+
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    ["福祉用具", "拠点", "区分"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      th.rowSpan = 2;
+      headerRow.appendChild(th);
+    });
+    categories.forEach(category => {
+      const th = document.createElement("th");
+      th.colSpan = 2;
+      th.textContent = category.name;
+      headerRow.appendChild(th);
+    });
+    const totalHeader = document.createElement("th");
+    totalHeader.colSpan = 2;
+    totalHeader.textContent = "合計";
+    headerRow.appendChild(totalHeader);
+    thead.appendChild(headerRow);
+
+    const subHeader = document.createElement("tr");
+    for (let i = 0; i < categories.length + 1; i++) {
+      ["件数", "貸出点数"].forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        subHeader.appendChild(th);
+      });
+    }
+    thead.appendChild(subHeader);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    function appendGroup(itemName, itemId, branchEntries, includeGroupTotal) {
+      const entries = branchEntries.slice();
+      if (includeGroupTotal) entries.push({ name: "合計", id: null });
+      if (!entries.length) return;
+      const groupRowSpan = entries.length * 2;
+
+      entries.forEach((branch, branchIndex) => {
+        [false, true].forEach((isExtension, kindIndex) => {
+          const tr = document.createElement("tr");
+          if (isExtension) tr.style.background = "#fafbfd";
+          if (branch.isTotal || branch.name === "合計" || branch.name === "総合計") {
+            tr.style.fontWeight = "700";
+            tr.style.background = "#eef3f7";
+          }
+
+          if (branchIndex === 0 && kindIndex === 0) {
+            const itemCell = document.createElement("td");
+            itemCell.textContent = itemName;
+            itemCell.rowSpan = groupRowSpan;
+            itemCell.className = "report-group-cell";
+            tr.appendChild(itemCell);
+          }
+
+          if (kindIndex === 0) {
+            const branchCell = document.createElement("td");
+            branchCell.textContent = branch.name;
+            branchCell.rowSpan = 2;
+            branchCell.className = "report-group-cell";
+            tr.appendChild(branchCell);
+          }
+
+          const kindCell = document.createElement("td");
+          kindCell.textContent = isExtension ? "延長" : "貸出";
+          tr.appendChild(kindCell);
+
+          let totalCount = 0;
+          let totalPoints = 0;
+          categories.forEach(category => {
+            const value = getReportValues(
+              annualIndex, itemId, branch.id, category.id, isExtension
+            );
+            totalCount += value.count;
+            totalPoints += value.points;
+
+            const countCell = document.createElement("td");
+            countCell.textContent = value.count;
+            tr.appendChild(countCell);
+            const pointsCell = document.createElement("td");
+            pointsCell.textContent = value.points;
+            tr.appendChild(pointsCell);
+          });
+
+          const totalCountCell = document.createElement("td");
+          totalCountCell.textContent = totalCount;
+          tr.appendChild(totalCountCell);
+          const totalPointsCell = document.createElement("td");
+          totalPointsCell.textContent = totalPoints;
+          tr.appendChild(totalPointsCell);
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    items.forEach(item => appendGroup(item.name, item.id, branches, true));
+    appendGroup("全物品合計", null, [...branches, { name: "総合計", id: null }], false);
+
+    table.appendChild(tbody);
+    oldTable.replaceWith(table);
+  }
+
   // =====================================
   // 集計表の描画
   // =====================================
@@ -3994,6 +4157,10 @@ if (isOverdue) {
   function renderReportTable(tableId, data, type) {
     if (type === "monthly") {
       renderMonthlyCompactReportTable(tableId, data);
+      return;
+    }
+    if (type === "annual") {
+      renderAnnualCompactReportTable(tableId, data);
       return;
     }
 
