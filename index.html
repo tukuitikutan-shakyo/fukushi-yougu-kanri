@@ -1563,11 +1563,12 @@
         <table class="inventory-table">
           <thead>
             <tr>
-              <th>福祉用具</th>
-              <th>識別ネーム</th>
-              <th>状態</th>
-              <th>操作</th>
-            </tr>
+  <th>福祉用具</th>
+  <th>識別ネーム</th>
+  <th>備考</th>
+  <th>状態</th>
+  <th>操作</th>
+</tr>
           </thead>
           <tbody id="individualBody">
             <tr>
@@ -2248,7 +2249,7 @@ loadInventory(currentBranchId);
     if (assets.length === 0) {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
-      cell.colSpan = 4;
+      cell.colSpan = 5;
       cell.textContent = "登録済みの物品はありません。";
       row.appendChild(cell);
       body.appendChild(row);
@@ -2262,9 +2263,14 @@ loadInventory(currentBranchId);
       itemCell.textContent = asset.itemName || "不明な物品";
 
       const identifierCell = document.createElement("td");
-      identifierCell.textContent = asset.identifier || "";
+identifierCell.textContent = asset.identifier || "";
 
-      const statusCell = document.createElement("td");
+// 備考欄
+const noteCell = document.createElement("td");
+noteCell.textContent = asset.note || "";
+noteCell.className = "individual-note-cell";
+
+const statusCell = document.createElement("td");
       const statusBadge = document.createElement("span");
       statusBadge.className = "asset-status-badge";
       statusBadge.textContent = asset.status || "状態不明";
@@ -2273,10 +2279,20 @@ loadInventory(currentBranchId);
       statusCell.appendChild(statusBadge);
 
       const actionCell = document.createElement("td");
-      const actions = document.createElement("div");
-      actions.className = "individual-actions";
+const actions = document.createElement("div");
+actions.className = "individual-actions";
 
-      if (asset.status === "利用可能" || asset.status === "故障中") {
+// 備考編集ボタン
+const editButton = document.createElement("button");
+editButton.type = "button";
+editButton.className = "individual-action-button";
+editButton.textContent = "備考編集";
+editButton.addEventListener("click", () =>
+  editIndividualNote(asset, editButton)
+);
+actions.appendChild(editButton);
+
+if (asset.status === "利用可能" || asset.status === "故障中") {
 
   // 編集ボタン
   const editButton = document.createElement("button");
@@ -2306,11 +2322,81 @@ loadInventory(currentBranchId);
   actions.append(editButton, faultButton, deleteButton);
 }
       actionCell.appendChild(actions);
-      row.append(itemCell, identifierCell, statusCell, actionCell);
+      row.append(itemCell, identifierCell, noteCell, statusCell, actionCell);
       body.appendChild(row);
     });
   }
+// 登録済み物品の備考だけを編集
+function editIndividualNote(asset, clickedButton) {
 
+  const noteInput = window.prompt(
+    "備考を入力してください。",
+    asset.note || ""
+  );
+
+  if (noteInput === null) return;
+
+  const note = noteInput.trim();
+
+  clickedButton.disabled = true;
+  clickedButton.textContent = "保存中...";
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=UTF-8"
+    },
+    body: JSON.stringify({
+      action: "updateIndividualAsset",
+      command: "editNote",
+      branchId: currentBranchId,
+      individualId: asset.id,
+      note: note
+    })
+  }).then(() => {
+    verifyNoteUpdate(1);
+  }).catch(() => {
+    resetButton();
+    showError("備考の更新リクエストを送信できませんでした。");
+  });
+
+  function verifyNoteUpdate(attempt) {
+    callApi(
+      { action: "individuals", branchId: currentBranchId },
+      data => {
+        const updatedAsset = data.assets?.find(
+          item => item.id === asset.id
+        );
+
+        if (updatedAsset && (updatedAsset.note || "") === note) {
+          renderIndividualAssetData(data);
+          showToast("備考を更新しました。");
+          return;
+        }
+
+        retryOrFail(attempt);
+      },
+      () => retryOrFail(attempt)
+    );
+  }
+
+  function retryOrFail(attempt) {
+    if (attempt < 6) {
+      setTimeout(() => verifyNoteUpdate(attempt + 1), 350);
+      return;
+    }
+
+    loadIndividualAssets(currentBranchId);
+    showError("備考の更新を確認できませんでした。一覧を再読み込みしてください。");
+  }
+
+  function resetButton() {
+    if (!clickedButton.isConnected) return;
+    clickedButton.disabled = false;
+    clickedButton.textContent = "備考編集";
+  }
+}
 // =====================================
 // 貸出可能な物品一覧の描画
 // =====================================
