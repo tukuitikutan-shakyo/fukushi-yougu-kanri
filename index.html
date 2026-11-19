@@ -299,6 +299,12 @@
   width: 16px;
   height: 16px;
 }
+
+.report-group-cell {
+  vertical-align: middle;
+  font-weight: 600;
+  background: #f8fafb;
+}
     .inventory-table {
       width: 100%;
       border-collapse: collapse;
@@ -1028,6 +1034,23 @@
       color: var(--muted);
     }
 
+    .global-loading-status {
+      display: none;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: 1px solid #d6eadd;
+      border-radius: 8px;
+      background: #edf7f1;
+      color: var(--success);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .global-loading-status.show {
+      display: block;
+    }
+
     .loading-spinner {
       width: 36px;
       height: 36px;
@@ -1061,6 +1084,7 @@
     <div class="loading-spinner" aria-hidden="true"></div>
     <p>読み込み中です...</p>
     <small>しばらくお待ちください</small>
+    <div id="globalLoadingStatus" class="global-loading-status" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -1604,6 +1628,16 @@
         </div>
       </div>
 
+      <div class="field">
+        <label for="monthlyReportBranchFilter">表示拠点</label>
+        <div class="select-wrap">
+          <select id="monthlyReportBranchFilter">
+            <option value="">全拠点</option>
+          </select>
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+
       <button type="button" class="refresh-button" id="loadMonthlyReport">
         <i data-lucide="refresh-cw"></i>
         集計を更新
@@ -1784,6 +1818,7 @@ let requestNumber = 0;
 
 // 通信中の件数をまとめて管理し、通信がすべて終わるまで画面をロック
 let activeLoadingCount = 0;
+let pendingToastMessage = "";
 
 function updateGlobalLoading() {
   const overlay = document.getElementById("globalLoading");
@@ -1803,6 +1838,13 @@ function updateGlobalLoading() {
 }
 
 function startGlobalLoading() {
+  if (activeLoadingCount === 0) {
+    const notice = document.getElementById("globalLoadingStatus");
+    if (notice) {
+      notice.textContent = "";
+      notice.classList.remove("show");
+    }
+  }
   activeLoadingCount += 1;
   updateGlobalLoading();
 }
@@ -1810,6 +1852,19 @@ function startGlobalLoading() {
 function endGlobalLoading() {
   activeLoadingCount = Math.max(0, activeLoadingCount - 1);
   updateGlobalLoading();
+
+  // 通信終了時にも登録結果を通常の通知として残す
+  if (activeLoadingCount === 0 && pendingToastMessage) {
+    const message = pendingToastMessage;
+    pendingToastMessage = "";
+    const toast = document.getElementById("toast");
+    if (toast) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove("show"), 3500);
+    }
+  }
 }
 
 // fetch() を使うPOST通信も共通の読み込み表示で管理
@@ -1833,6 +1888,7 @@ let masterCategories = [];
 let loanSubmitting = false;
 let returnSubmitting = false;
 let extensionSubmitting = false;
+let extensionAssetsLoading = false;
 
   const branchSelect =
     document.getElementById("branchSelect");
@@ -1937,6 +1993,13 @@ let extensionSubmitting = false;
     document.getElementById("loadMonthlyReport")
       .addEventListener("click", () => loadReportData("monthly"));
 
+    document.getElementById("monthlyReportBranchFilter")
+      .addEventListener("change", () => {
+        if (monthlyReportData) {
+          renderReportTable("monthlyReportTable", monthlyReportData, "monthly");
+        }
+      });
+
     document.getElementById("loadAnnualReport")
       .addEventListener("click", () => loadReportData("annual"));
 
@@ -1949,6 +2012,7 @@ let extensionSubmitting = false;
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
         if (target === "timeline") loadLoanTimeline(currentBranchId);
+        if (target === "extension") loadExtensionAssets(currentBranchId);
         tabButtons.forEach(button => {
           const selected = button === tab;
           button.classList.toggle("active", selected);
@@ -2013,7 +2077,7 @@ document.getElementById("registerExtensionButton")
   .addEventListener("click", registerExtension);
 
 document.getElementById("refreshExtensionAssets")
-  .addEventListener("click", () => loadExtensionAssets(currentBranchId));
+  .addEventListener("click", () => loadExtensionAssets(currentBranchId, true));
 
 
 document.getElementById("loanDate")
@@ -2192,7 +2256,7 @@ loadInventory(currentBranchId);
   // 在庫データ取得
   // =====================================
 
-  function loadInventory(branchId) {
+  function loadInventory(branchId, options = {}) {
 
     if (!branchId) return;
 
@@ -2229,9 +2293,8 @@ loadInventory(currentBranchId);
       }
     );
 
-    // 在庫情報と関連一覧を並行取得して、待ち時間を短縮
-    loadIndividualAssets(branchId);
-    loadExtensionAssets(branchId);
+    // 物品一覧は在庫取得と並行して取得する。登録直後の確認済みデータがあれば再取得を省略。
+    if (!options.skipIndividualAssets) loadIndividualAssets(branchId);
 
   }
   // =====================================
@@ -2239,72 +2302,53 @@ loadInventory(currentBranchId);
   // =====================================
 
   function loadIndividualAssets(branchId) {
+    if (!branchId) return;
 
     callApi(
-      {
-        action: "individuals",
-        branchId: branchId
-      },
-      data => {
-
-        const body =
-          document.getElementById("individualBody");
-
-        const count =
-          document.getElementById("individualCount");
-
-        body.replaceChildren();
-
-        if (!data || data.success !== true) {
-          body.textContent = "物品情報を取得できませんでした。";
-          count.textContent = "取得失敗";
-          return;
-        }
-
-        count.textContent = data.count + "点";
-        renderLoanAssets(Array.isArray(data.assets) ? data.assets : []);
-        renderReturnAssets(Array.isArray(data.assets) ? data.assets : []);
-
-        if (!Array.isArray(data.assets) || data.assets.length === 0) {
-
-          const row = document.createElement("tr");
-          const cell = document.createElement("td");
-
-          cell.colSpan = 3;
-          cell.textContent = "登録済みの物品はありません。";
-
-          row.appendChild(cell);
-          body.appendChild(row);
-
-          return;
-        }
-
-        data.assets.forEach(asset => {
-
-          const row = document.createElement("tr");
-
-          const itemCell = document.createElement("td");
-          itemCell.textContent = asset.itemName;
-
-          const identifierCell = document.createElement("td");
-          identifierCell.textContent = asset.identifier;
-
-          const statusCell = document.createElement("td");
-          statusCell.textContent = asset.status;
-
-          row.append(
-            itemCell,
-            identifierCell,
-            statusCell
-          );
-
-          body.appendChild(row);
-
-        });
-
-      }
+      { action: "individuals", branchId: branchId },
+      data => renderIndividualAssetData(data),
+      message => showError("物品情報の取得に失敗しました。" + message)
     );
+  }
 
+  // 取得済みの物品データを各画面へ反映（再取得を避けるため共通化）
+  function renderIndividualAssetData(data) {
+    const body = document.getElementById("individualBody");
+    const count = document.getElementById("individualCount");
+    body.replaceChildren();
+
+    if (!data || data.success !== true) {
+      body.textContent = "物品情報を取得できませんでした。";
+      count.textContent = "取得失敗";
+      return;
+    }
+
+    const assets = Array.isArray(data.assets) ? data.assets : [];
+    count.textContent = (data.count ?? assets.length) + "点";
+    renderLoanAssets(assets);
+    renderReturnAssets(assets);
+
+    if (assets.length === 0) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.textContent = "登録済みの物品はありません。";
+      row.appendChild(cell);
+      body.appendChild(row);
+      return;
+    }
+
+    assets.forEach(asset => {
+      const row = document.createElement("tr");
+      const itemCell = document.createElement("td");
+      itemCell.textContent = asset.itemName;
+      const identifierCell = document.createElement("td");
+      identifierCell.textContent = asset.identifier;
+      const statusCell = document.createElement("td");
+      statusCell.textContent = asset.status;
+      row.append(itemCell, identifierCell, statusCell);
+      body.appendChild(row);
+    });
   }
 
 // =====================================
@@ -2341,8 +2385,16 @@ function renderLoanAssets(assets) {
     groups.get(name).push(asset);
   });
 
+  const preferredItemOrder = ["車いす", "介護車", "松葉杖", "ロフトランドクラッチ"];
+  const preferredItemRank = new Map(preferredItemOrder.map((name, index) => [name, index]));
+  const sortedGroups = Array.from(groups.entries()).sort(([nameA], [nameB]) => {
+    const rankA = preferredItemRank.has(nameA) ? preferredItemRank.get(nameA) : Number.MAX_SAFE_INTEGER;
+    const rankB = preferredItemRank.has(nameB) ? preferredItemRank.get(nameB) : Number.MAX_SAFE_INTEGER;
+    return rankA - rankB || nameA.localeCompare(nameB, "ja");
+  });
+
   let groupIndex = 0;
-  groups.forEach((groupAssets, itemName) => {
+  sortedGroups.forEach(([itemName, groupAssets]) => {
     const groupId = "loan-group-" + groupIndex++;
 
     const groupRow = document.createElement("tr");
@@ -2517,12 +2569,10 @@ async function registerLoan() {
         }
 
         document.getElementById("loanNote").value = "";
+        renderIndividualAssetData(data);
         loanTimelineCache = null;
         loanTimelineCacheAt = 0;
-        loadInventory(currentBranchId);
-        const timelineStart = document.getElementById("timelineStart");
-        if (!timelineStart.value) { const today = new Date(); timelineStart.value = localDateString(new Date(today.getFullYear(), today.getMonth(), 1)); }
-        loadLoanTimeline(currentBranchId);
+        loadInventory(currentBranchId, { skipIndividualAssets: true });
         showToast(items.length + "点の貸出を登録しました。");
       },
       message => {
@@ -2734,9 +2784,10 @@ async function registerReturn() {
         }
 
         document.getElementById("returnNote").value = "";
+        renderIndividualAssetData(data);
         loanTimelineCache = null;
         loanTimelineCacheAt = 0;
-        loadInventory(currentBranchId);
+        loadInventory(currentBranchId, { skipIndividualAssets: true });
         const repairCount = items.filter(item => item.returnStatus === "整備が必要").length;
         const normalCount = items.length - repairCount;
         showToast(
@@ -2768,12 +2819,23 @@ async function registerReturn() {
 
 // 復元: loadExtensionAssets
 
-function loadExtensionAssets(branchId) {
+function loadExtensionAssets(branchId, forceRefresh = false) {
   if (!branchId) return;
 
+  // 貸出期間一覧と同じAPI結果を30秒間共有し、重複取得を防ぐ
+  if (!forceRefresh && loanTimelineCache &&
+      loanTimelineCache.branchId === branchId &&
+      Date.now() - loanTimelineCacheAt < 30000) {
+    renderExtensionAssets(loanTimelineCache.items);
+    return;
+  }
+  if (extensionAssetsLoading) return;
+
+  extensionAssetsLoading = true;
   callApi(
     { action: "loanedItems", branchId: branchId },
     data => {
+      extensionAssetsLoading = false;
       if (!data || data.success !== true) {
         const body = document.getElementById("extensionAssetBody");
         body.replaceChildren();
@@ -2787,9 +2849,13 @@ function loadExtensionAssets(branchId) {
         document.getElementById("registerExtensionButton").disabled = true;
         return;
       }
-      renderExtensionAssets(Array.isArray(data.items) ? data.items : []);
+      const items = Array.isArray(data.items) ? data.items : [];
+      loanTimelineCache = { branchId: branchId, items: items };
+      loanTimelineCacheAt = Date.now();
+      renderExtensionAssets(items);
     },
     message => {
+      extensionAssetsLoading = false;
       showError("延長対象の取得に失敗しました。" + message);
     }
   );
@@ -2973,7 +3039,9 @@ async function registerExtension() {
         }
 
         document.getElementById("extensionNote").value = "";
-        loadExtensionAssets(currentBranchId);
+        loanTimelineCache = { branchId: currentBranchId, items: data.items };
+        loanTimelineCacheAt = Date.now();
+        renderExtensionAssets(data.items);
         showToast("電話1回分の延長受付（" + items.length + "点）を登録しました。");
       },
       message => {
@@ -3130,7 +3198,8 @@ function registerIndividual() {
             document.getElementById("individualIdentifier").value = "";
             document.getElementById("individualNote").value = "";
 
-            loadInventory(currentBranchId);
+            renderIndividualAssetData(result);
+            loadInventory(currentBranchId, { skipIndividualAssets: true });
 
             showToast("物品を登録しました。");
 
@@ -3853,6 +3922,7 @@ function showSkeleton() {
 
         if (isMonthly) {
           monthlyReportData = data;
+          populateMonthlyBranchFilter(data.branches || []);
           renderReportTable(
             "monthlyReportTable",
             data,
@@ -3878,11 +3948,227 @@ function showSkeleton() {
   }
 
   
+  // 集計値を事前に索引化し、表の各セルで配列全件を検索しないようにする
+  function buildReportIndex(records) {
+    const index = new Map();
+    const add = (itemId, branchId, categoryId, record) => {
+      const key = [itemId ?? "*", branchId ?? "*", categoryId ?? "*"].join("\u001f");
+      let value = index.get(key);
+      if (!value) {
+        value = { loanCount: 0, loanPoints: 0, extensionCount: 0, extensionPoints: 0 };
+        index.set(key, value);
+      }
+      value.loanCount += Number(record.loanCount || 0);
+      value.loanPoints += Number(record.loanPoints || 0);
+      value.extensionCount += Number(record.extensionCount || 0);
+      value.extensionPoints += Number(record.extensionPoints || 0);
+    };
+
+    (Array.isArray(records) ? records : []).forEach(record => {
+      add(record.itemId, record.branchId, record.categoryId, record);
+      add(record.itemId, null, record.categoryId, record);
+      add(null, record.branchId, record.categoryId, record);
+      add(null, null, record.categoryId, record);
+    });
+    return index;
+  }
+
+  function getReportValues(index, itemId, branchId, categoryId, isExtension) {
+    const key = [itemId ?? "*", branchId ?? "*", categoryId ?? "*"].join("\u001f");
+    const record = index.get(key) || {};
+    return isExtension
+      ? { count: record.extensionCount || 0, points: record.extensionPoints || 0 }
+      : { count: record.loanCount || 0, points: record.loanPoints || 0 };
+  }
+
+  function populateMonthlyBranchFilter(branches) {
+    const select = document.getElementById("monthlyReportBranchFilter");
+    if (!select) return;
+    const selectedValue = select.value;
+    select.replaceChildren();
+
+    const allOption = document.createElement("option");
+    allOption.value = "";
+    allOption.textContent = "全拠点";
+    select.appendChild(allOption);
+
+    branches.forEach(branch => {
+      const option = document.createElement("option");
+      option.value = branch.id;
+      option.textContent = branch.name;
+      select.appendChild(option);
+    });
+
+    select.value = branches.some(branch => branch.id === selectedValue)
+      ? selectedValue
+      : "";
+  }
+
+  // 月別集計：拠点で絞り込み、物品名・拠点名はグループ内で一度だけ表示
+  function renderMonthlyCompactReportTable(tableId, data) {
+    const oldTable = document.getElementById(tableId);
+    const allBranches = Array.isArray(data.branches) ? data.branches : [];
+    const items = Array.isArray(data.items) ? data.items : [];
+    const categories = Array.isArray(data.categories) ? data.categories : [];
+    const selectedBranchId = document.getElementById("monthlyReportBranchFilter")?.value || "";
+    const displayBranches = selectedBranchId
+      ? allBranches.filter(branch => branch.id === selectedBranchId)
+      : allBranches;
+    const selectedBranch = displayBranches[0] || null;
+    const mainIndex = buildReportIndex(data.monthly || []);
+    const cumulativeIndex = buildReportIndex(data.cumulative || []);
+
+    const table = document.createElement("table");
+    table.id = tableId;
+    table.className = "inventory-table";
+    table.style.minWidth = "1800px";
+
+    const caption = document.createElement("caption");
+    caption.textContent = "令和" + (data.fiscalYear - 2018) + "年度 福祉用具無料貸出事業 " + data.month + "月分";
+    caption.style.padding = "12px";
+    caption.style.fontWeight = "700";
+    caption.style.textAlign = "left";
+    table.appendChild(caption);
+
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+    ["福祉用具", "拠点", "区分"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      th.rowSpan = 2;
+      headerRow.appendChild(th);
+    });
+    categories.forEach(category => {
+      const th = document.createElement("th");
+      th.colSpan = 2;
+      th.textContent = category.name;
+      headerRow.appendChild(th);
+    });
+    const totalHeader = document.createElement("th");
+    totalHeader.colSpan = 2;
+    totalHeader.textContent = "合計";
+    headerRow.appendChild(totalHeader);
+    const cumulativeHeader = document.createElement("th");
+    cumulativeHeader.colSpan = 2;
+    cumulativeHeader.textContent = "年度累計";
+    headerRow.appendChild(cumulativeHeader);
+    thead.appendChild(headerRow);
+
+    const subHeader = document.createElement("tr");
+    for (let i = 0; i < categories.length + 2; i++) {
+      ["件数", "貸出点数"].forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        subHeader.appendChild(th);
+      });
+    }
+    thead.appendChild(subHeader);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    function appendGroup(itemName, itemId, branchEntries, includeGroupTotal) {
+      const entries = branchEntries.slice();
+      if (includeGroupTotal) entries.push({ name: "合計", id: null });
+      if (!entries.length) return;
+      const groupRowSpan = entries.length * 2;
+
+      entries.forEach((branch, branchIndex) => {
+        [false, true].forEach((isExtension, kindIndex) => {
+          const tr = document.createElement("tr");
+          if (isExtension) tr.style.background = "#fafbfd";
+          if (branch.isTotal || branch.name === "合計" || branch.name === "総合計" || branch.name === "拠点合計") {
+            tr.style.fontWeight = "700";
+            tr.style.background = "#eef3f7";
+          }
+
+          if (branchIndex === 0 && kindIndex === 0) {
+            const itemCell = document.createElement("td");
+            itemCell.textContent = itemName;
+            itemCell.rowSpan = groupRowSpan;
+            itemCell.className = "report-group-cell";
+            tr.appendChild(itemCell);
+          }
+
+          if (kindIndex === 0) {
+            const branchCell = document.createElement("td");
+            branchCell.textContent = branch.name;
+            branchCell.rowSpan = 2;
+            branchCell.className = "report-group-cell";
+            tr.appendChild(branchCell);
+          }
+
+          const kindCell = document.createElement("td");
+          kindCell.textContent = isExtension ? "延長" : "貸出";
+          tr.appendChild(kindCell);
+
+          let totalCount = 0;
+          let totalPoints = 0;
+          let cumulativeCount = 0;
+          let cumulativePoints = 0;
+
+          categories.forEach(category => {
+            const value = getReportValues(mainIndex, itemId, branch.id, category.id, isExtension);
+            totalCount += value.count;
+            totalPoints += value.points;
+            const countCell = document.createElement("td");
+            countCell.textContent = value.count;
+            tr.appendChild(countCell);
+            const pointsCell = document.createElement("td");
+            pointsCell.textContent = value.points;
+            tr.appendChild(pointsCell);
+
+            const cumulative = getReportValues(cumulativeIndex, itemId, branch.id, category.id, isExtension);
+            cumulativeCount += cumulative.count;
+            cumulativePoints += cumulative.points;
+          });
+
+          const totalCountCell = document.createElement("td");
+          totalCountCell.textContent = totalCount;
+          tr.appendChild(totalCountCell);
+          const totalPointsCell = document.createElement("td");
+          totalPointsCell.textContent = totalPoints;
+          tr.appendChild(totalPointsCell);
+          const cumulativeCountCell = document.createElement("td");
+          cumulativeCountCell.textContent = cumulativeCount;
+          tr.appendChild(cumulativeCountCell);
+          const cumulativePointsCell = document.createElement("td");
+          cumulativePointsCell.textContent = cumulativePoints;
+          tr.appendChild(cumulativePointsCell);
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    items.forEach(item => {
+      appendGroup(item.name, item.id, displayBranches, !selectedBranchId);
+    });
+
+    if (selectedBranchId && selectedBranch) {
+      appendGroup("全物品合計", null, [{ name: selectedBranch.name + "合計", id: selectedBranch.id, isTotal: true }], false);
+    } else {
+      appendGroup(
+        "全物品合計",
+        null,
+        [...displayBranches, { name: "総合計", id: null }],
+        false
+      );
+    }
+
+    table.appendChild(tbody);
+    oldTable.replaceWith(table);
+  }
+
   // =====================================
   // 集計表の描画
   // =====================================
 
   function renderReportTable(tableId, data, type) {
+    if (type === "monthly") {
+      renderMonthlyCompactReportTable(tableId, data);
+      return;
+    }
+
     const oldTable = document.getElementById(tableId);
 
     const branches = data.branches || [];
@@ -3970,29 +4256,13 @@ function showSkeleton() {
     newTable.appendChild(thead);
 
     // -------------------------------------
-    // 集計用関数
+    // 集計用索引（データ件数が増えてもセルごとに全件検索しない）
     // -------------------------------------
+    const mainIndex = buildReportIndex(mainData);
+    const cumulativeIndex = buildReportIndex(cumulativeData);
 
-    function getValues(source, itemId, branchId, categoryId, isExtension) {
-      const records = source.filter(record =>
-        (itemId === null || record.itemId === itemId) &&
-        (branchId === null || record.branchId === branchId) &&
-        (categoryId === null || record.categoryId === categoryId)
-      );
-
-      const countKey = isExtension ? "extensionCount" : "loanCount";
-      const pointsKey = isExtension ? "extensionPoints" : "loanPoints";
-
-      return {
-        count: records.reduce(
-          (sum, record) => sum + Number(record[countKey] || 0),
-          0
-        ),
-        points: records.reduce(
-          (sum, record) => sum + Number(record[pointsKey] || 0),
-          0
-        )
-      };
+    function getValues(index, itemId, branchId, categoryId, isExtension) {
+      return getReportValues(index, itemId, branchId, categoryId, isExtension);
     }
 
     // -------------------------------------
@@ -4017,7 +4287,7 @@ function showSkeleton() {
 
       categories.forEach(category => {
         const values = getValues(
-          mainData,
+          mainIndex,
           itemId,
           branchId,
           category.id,
@@ -4038,7 +4308,7 @@ function showSkeleton() {
         // 月別集計の年度累計
         if (type === "monthly") {
           const cumulativeValues = getValues(
-            cumulativeData,
+            cumulativeIndex,
             itemId,
             branchId,
             category.id,
@@ -4190,12 +4460,27 @@ function showSkeleton() {
     }
 
     const rows = Array.from(table.querySelectorAll("tr"));
+    const grid = [];
 
-    const text = rows.map(row =>
-      Array.from(row.querySelectorAll("th, td"))
-        .map(cell => cell.innerText.replace(/\t|\n/g, " "))
-        .join("\t")
-    ).join("\n");
+    rows.forEach((row, rowIndex) => {
+      grid[rowIndex] = grid[rowIndex] || [];
+      let columnIndex = 0;
+      Array.from(row.querySelectorAll("th, td")).forEach(cell => {
+        while (grid[rowIndex][columnIndex] !== undefined) columnIndex++;
+        const value = cell.innerText.replace(/\t|\n/g, " ");
+        const rowSpan = cell.rowSpan || 1;
+        const colSpan = cell.colSpan || 1;
+        for (let r = rowIndex; r < rowIndex + rowSpan; r++) {
+          grid[r] = grid[r] || [];
+          for (let c = columnIndex; c < columnIndex + colSpan; c++) {
+            grid[r][c] = value;
+          }
+        }
+        columnIndex += colSpan;
+      });
+    });
+
+    const text = grid.map(row => row.map(cell => cell ?? "").join("\t")).join("\n");
 
     navigator.clipboard.writeText(text)
       .then(() => showToast("集計表をコピーしました。"))
@@ -4219,18 +4504,23 @@ function showSkeleton() {
 
 
   function showToast(message) {
+    const notice = document.getElementById("globalLoadingStatus");
+
+    if (activeLoadingCount > 0 && notice) {
+      pendingToastMessage = message;
+      notice.textContent = message;
+      notice.classList.add("show");
+      return;
+    }
 
     const toast = document.getElementById("toast");
-
     toast.textContent = message;
     toast.classList.add("show");
 
     clearTimeout(toastTimer);
-
     toastTimer = setTimeout(() => {
       toast.classList.remove("show");
     }, 3500);
-
   }
 
 </script>
