@@ -557,7 +557,7 @@
     }
 
     .loan-assets-table {
-      min-width: 650px;
+      min-width: 760px;
     }
 
     .loan-group-toggle {
@@ -583,6 +583,15 @@
 
     .loan-assets-table td {
       vertical-align: middle;
+    }
+
+    .loan-asset-note {
+      min-width: 160px;
+      max-width: 280px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      color: var(--muted);
+      font-size: 12px;
     }
 
     .loan-asset-check {
@@ -1232,11 +1241,12 @@
               <th>選択</th>
               <th>福祉用具</th>
               <th>識別ネーム</th>
+              <th>備考</th>
               <th>返却予定日</th>
             </tr>
           </thead>
           <tbody id="loanAssetBody">
-            <tr><td colspan="4">物品情報を読み込んでいます。</td></tr>
+            <tr><td colspan="5">物品情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -1640,7 +1650,7 @@
 
       <button type="button" class="refresh-button" id="loadMonthlyReport">
         <i data-lucide="refresh-cw"></i>
-        更新
+        集計を更新
       </button>
     </div>
 
@@ -2370,7 +2380,7 @@ function renderLoanAssets(assets) {
   if (availableAssets.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 4;
+    cell.colSpan = 5;
     cell.textContent = "現在、貸出可能な物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
@@ -2400,7 +2410,7 @@ function renderLoanAssets(assets) {
     const groupRow = document.createElement("tr");
     groupRow.className = "loan-group-row";
     const groupCell = document.createElement("td");
-    groupCell.colSpan = 4;
+    groupCell.colSpan = 5;
 
     const toggle = document.createElement("button");
     toggle.type = "button";
@@ -2448,6 +2458,10 @@ function renderLoanAssets(assets) {
       const identifierCell = document.createElement("td");
       identifierCell.textContent = asset.identifier;
 
+      const noteCell = document.createElement("td");
+      noteCell.textContent = asset.note || "";
+      noteCell.className = "loan-asset-note";
+
       const dueCell = document.createElement("td");
       const dueInput = document.createElement("input");
       dueInput.type = "date";
@@ -2457,7 +2471,7 @@ function renderLoanAssets(assets) {
       dueInput.min = document.getElementById("loanDate").value || "";
       dueCell.appendChild(dueInput);
 
-      row.append(selectCell, itemCell, identifierCell, dueCell);
+      row.append(selectCell, itemCell, identifierCell, noteCell, dueCell);
       body.appendChild(row);
     });
   });
@@ -3063,93 +3077,60 @@ async function registerExtension() {
 
 function registerIndividual() {
 
-  const button =
-    document.getElementById("registerIndividualButton");
+  const button = document.getElementById("registerIndividualButton");
+  const itemId = document.getElementById("individualItemSelect").value;
+  const identifier = document.getElementById("individualIdentifier").value.trim();
+  const note = document.getElementById("individualNote").value.trim();
 
-  const itemId =
-    document.getElementById("individualItemSelect").value;
-
-  const identifier =
-    document.getElementById("individualIdentifier").value.trim();
-
-  const note =
-    document.getElementById("individualNote").value.trim();
-
-  // 入力チェック
   if (!currentBranchId) {
     showToast("拠点を特定できません。");
     return;
   }
-
   if (!itemId) {
     showToast("福祉用具を選択してください。");
     return;
   }
-
   if (!identifier) {
     showToast("識別ネームを入力してください。");
     return;
   }
 
-  // 二重送信を防止
   button.disabled = true;
   button.textContent = "登録前に確認中...";
 
-  // ボタンを元に戻す
   function resetButton() {
     button.disabled = false;
     button.textContent = "物品を登録";
   }
 
-  // まず登録済み物品を取得
   callApi(
-    {
-      action: "individuals",
-      branchId: currentBranchId
-    },
+    { action: "individuals", branchId: currentBranchId },
     async data => {
-
       if (!data || data.success !== true) {
         resetButton();
         showError("登録済み物品の確認に失敗しました。");
         return;
       }
 
-      const existingAssets = Array.isArray(data.assets)
-        ? data.assets
-        : [];
-
-      // 同じ物品・識別ネームが既に存在するか確認
-      const duplicate = existingAssets.some(
-        asset =>
-          asset.itemId === itemId &&
-          String(asset.identifier).trim() === identifier
+      const existingAssets = Array.isArray(data.assets) ? data.assets : [];
+      const duplicate = existingAssets.some(asset =>
+        asset.itemId === itemId && String(asset.identifier).trim() === identifier
       );
 
       if (duplicate) {
         resetButton();
-        showError(
-          "同じ福祉用具・識別ネームは既に登録されています。"
-        );
+        showError("同じ福祉用具・識別ネームは既に登録されています。");
         return;
       }
 
-      // 登録前の物品IDを保存
-      const existingIds = new Set(
-        existingAssets.map(asset => asset.id)
-      );
+      const existingIds = new Set(existingAssets.map(asset => asset.id));
 
       try {
-
         button.textContent = "登録中...";
-
-        // GASへ登録データを送信
         await fetch(API_URL, {
           method: "POST",
           mode: "no-cors",
-          headers: {
-            "Content-Type": "text/plain;charset=UTF-8"
-          },
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
           body: JSON.stringify({
             action: "registerIndividual",
             branchId: currentBranchId,
@@ -3161,64 +3142,70 @@ function registerIndividual() {
 
         button.textContent = "登録結果を確認中...";
 
-        // 登録後に物品一覧を再取得
-        callApi(
-          {
-            action: "individuals",
-            branchId: currentBranchId
-          },
-          result => {
+        // GASの書き込み直後に一覧へ反映されるまで、最大6回確認する。
+        // no-corsではPOSTの応答本文を読めないため、一覧への反映を確認して成功判定する。
+        const verifyRegistration = attempt => {
+          callApi(
+            { action: "individuals", branchId: currentBranchId },
+            result => {
+              if (!result || result.success !== true) {
+                if (attempt < 6) {
+                  setTimeout(() => verifyRegistration(attempt + 1), 350);
+                  return;
+                }
+                resetButton();
+                showError("登録後の一覧取得に失敗しました。物品一覧を更新して確認してください。");
+                return;
+              }
 
-            resetButton();
-
-            if (!result || result.success !== true) {
-              showError(
-                "登録後の確認に失敗しました。物品一覧を再読み込みしてください。"
-              );
-              return;
-            }
-
-            const newAsset = result.assets.find(
-              asset =>
+              const newAsset = (result.assets || []).find(asset =>
                 asset.identifier === identifier &&
                 asset.itemId === itemId &&
                 !existingIds.has(asset.id)
-            );
-
-            // 登録前になかった物品IDが確認できなければ失敗
-            if (!newAsset) {
-              showError(
-                "新しい物品の登録を確認できませんでした。登録状況を確認してください。"
               );
-              return;
+
+              if (!newAsset && attempt < 6) {
+                setTimeout(() => verifyRegistration(attempt + 1), 350);
+                return;
+              }
+
+              resetButton();
+              renderIndividualAssetData(result);
+              loadInventory(currentBranchId, { skipIndividualAssets: true });
+
+              if (!newAsset) {
+                // 登録失敗と断定しない。送信後の一覧反映が確認できなかったことだけを通知する。
+                showError("登録処理は送信しましたが、一覧への反映を確認できませんでした。二重登録を避けるため、物品一覧を確認してください。");
+                return;
+              }
+
+              document.getElementById("individualItemSelect").value = "";
+              document.getElementById("individualIdentifier").value = "";
+              document.getElementById("individualNote").value = "";
+              showToast("物品を登録しました。");
+            },
+            message => {
+              if (attempt < 6) {
+                setTimeout(() => verifyRegistration(attempt + 1), 350);
+                return;
+              }
+              resetButton();
+              showError("登録後の一覧確認に失敗しました。物品一覧を更新して確認してください。" + message);
             }
+          );
+        };
 
-            // 登録成功時のみ入力欄をクリア
-            document.getElementById("individualItemSelect").value = "";
-            document.getElementById("individualIdentifier").value = "";
-            document.getElementById("individualNote").value = "";
-
-            renderIndividualAssetData(result);
-            loadInventory(currentBranchId, { skipIndividualAssets: true });
-
-            showToast("物品を登録しました。");
-
-          }
-        );
-
+        verifyRegistration(1);
       } catch (error) {
-
         resetButton();
-
-        showError(
-          "登録リクエストの送信に失敗しました。通信状態を確認してください。"
-        );
-
+        showError("登録リクエストの送信に失敗しました。通信状態を確認してください。");
       }
-
+    },
+    message => {
+      resetButton();
+      showError("登録済み物品の確認に失敗しました。" + message);
     }
   );
-
 }
 
 // 復元: renderInventory
