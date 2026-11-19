@@ -281,11 +281,21 @@
     }
 
     .summary {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 26px;
-    }
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.summary-card.summary-warning {
+  border-color: #f0b4a8;
+  background: #fff7f5;
+}
+  
+.summary-warning .summary-label,
+.summary-warning .summary-number {
+  color: #c62828;
+}
 
     .summary-card {
       background: white;
@@ -1173,7 +1183,24 @@
     width: 100%;
   }
 }
+/* 返却期限超過の警告表示 */
+.timeline-overdue-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  width: max-content;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.timeline-bar-overdue {
+  box-shadow: inset 0 0 0 1px #991b1b;
+}
 </style>
+
 </head>
 
 <body>
@@ -1268,18 +1295,40 @@
       </div>
     </div>
 
-    <div class="summary-card">
+        <div class="summary-card">
       <div class="summary-label">利用可能</div>
       <div class="summary-number">
         <span id="availableCount">－</span>
         <span class="summary-unit">点</span>
       </div>
     </div>
-  </section>
 
+    <!-- 本日返却予定 -->
+    <div class="summary-card">
+      <div class="summary-label">本日返却予定</div>
+      <div class="summary-number">
+        <span id="dueTodayCount">－</span>
+        <span class="summary-unit">件</span>
+      </div>
+    </div>
+
+    <!-- 返却期限超過 -->
+    <div class="summary-card summary-warning">
+      <div class="summary-label">要対応</div>
+      <div class="summary-number">
+        <span id="overdueCount">－</span>
+        <span class="summary-unit">件</span>
+      </div>
+    </div>
+  </section>
     <nav class="page-tabs" role="tablist" aria-label="管理画面">
-    <button type="button" class="page-tab active" role="tab" aria-selected="true" data-tab-target="loan">貸出登録</button>
-    <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="timeline">貸出期間一覧</button>
+    <button type="button" class="page-tab"
+  role="tab" aria-selected="false"
+  data-tab-target="loan">貸出登録</button>
+
+<button type="button" class="page-tab active"
+  role="tab" aria-selected="true"
+  data-tab-target="timeline">貸出期間一覧</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="return">返却登録</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="extension">延長受付</button>
     <button type="button" class="page-tab" role="tab" aria-selected="false" data-tab-target="inventory">物品在庫一覧</button>
@@ -1289,7 +1338,9 @@
 
 
   <!-- 貸出登録 -->
-  <section id="loanRegistration" class="loan-section active" data-tab-page="loan">
+  <section id="loanRegistration"
+  class="loan-section"
+  data-tab-page="loan">
     <div class="section-heading">
       <h2>貸出登録</h2>
       <span id="loanAssetCount">利用可能な物品を読み込み中</span>
@@ -1483,7 +1534,9 @@
   </section>
 
   <!-- 貸出期間一覧 -->
-  <section id="loanTimeline" data-tab-page="timeline">
+  <section id="loanTimeline"
+  class="active"
+  data-tab-page="timeline">
     <div class="section-heading">
       <h2>貸出期間一覧</h2>
       <span id="timelineCount">貸出中の用具を読み込みます</span>
@@ -2223,10 +2276,12 @@ loadInventory(currentBranchId);
 
   function loadInventory(branchId, options = {}) {
 
-    if (!branchId) return;
+  if (!branchId) return;
 
-    showSkeleton();
+  // トップの返却予定件数も最新化
+  loadLoanTimeline(branchId, true);
 
+  showSkeleton();
     setConnection("接続中");
 
     refreshButton.disabled = true;
@@ -3540,7 +3595,32 @@ function showSkeleton() {
     });
   }
 
-  function renderLoanTimeline(items) {
+  // 本日返却予定・返却期限超過の件数を更新
+function updateReturnDeadlineSummary(items) {
+
+  const today = localDateString(new Date());
+
+  const activeItems = items.filter(item =>
+    item.status === "貸出中" && item.dueDate
+  );
+
+  const dueToday = activeItems.filter(item =>
+    item.dueDate === today
+  ).length;
+
+  const overdue = activeItems.filter(item =>
+    item.dueDate < today
+  ).length;
+
+  document.getElementById("dueTodayCount").textContent = dueToday;
+  document.getElementById("overdueCount").textContent = overdue;
+}
+
+
+// 貸出期間一覧の描画
+function renderLoanTimeline(items) {
+
+  updateReturnDeadlineSummary(items);
     const body = document.getElementById("loanTimelineBody");
     const count = document.getElementById("timelineCount");
     const input = document.getElementById("timelineStart");
@@ -3580,16 +3660,48 @@ function showSkeleton() {
       sub.textContent=(item.identifier ? item.identifier+" / " : "")+item.loanDate+" ～ "+(finishDate || "返却予定日未設定");
       name.append(strong,sub);
       if (item.status === "返却済") {
-        const badge=document.createElement("span"); badge.className="timeline-returned-badge"; badge.textContent="返却済"; name.appendChild(badge);
-      }
+
+  const badge = document.createElement("span");
+  badge.className = "timeline-returned-badge";
+  badge.textContent = "返却済";
+  name.appendChild(badge);
+
+} else if (
+  item.status === "貸出中" &&
+  item.dueDate &&
+  item.dueDate < localDateString(new Date())
+) {
+
+  const badge = document.createElement("span");
+  badge.className = "timeline-overdue-badge";
+  badge.textContent = "要対応";
+  name.appendChild(badge);
+
+}
       const track=document.createElement("div"); track.className="timeline-track";
       const loan=new Date(item.loanDate+"T00:00:00");
       const due=new Date(finishDate+"T00:00:00");
       const left=Math.max(0,(loan-start)/86400000); const right=Math.min(20,(due-start)/86400000+1);
       const bar=document.createElement("div"); bar.className="timeline-bar";
       bar.style.left=(left/20*100)+"%"; bar.style.width=(Math.max(.8,(right-left)/20*100))+"%";
-      bar.style.background = item.status === "返却済" ? "#98a2b3" : colors[index%colors.length];
-      if (item.status === "返却済") bar.classList.add("timeline-bar-returned");
+      const isOverdue =
+  item.status === "貸出中" &&
+  item.dueDate &&
+  item.dueDate < localDateString(new Date());
+
+bar.style.background = item.status === "返却済"
+  ? "#98a2b3"
+  : isOverdue
+    ? "#dc2626"
+    : colors[index % colors.length];
+
+if (item.status === "返却済") {
+  bar.classList.add("timeline-bar-returned");
+}
+
+if (isOverdue) {
+  bar.classList.add("timeline-bar-overdue");
+}
       const label=document.createElement("span"); label.textContent=item.identifier || item.itemName || "貸出中"; bar.appendChild(label);
       if (loan < start) bar.style.borderTopLeftRadius="0";
       if (due >= end) bar.style.borderTopRightRadius="0";
