@@ -1202,6 +1202,23 @@
       box-shadow: inset 0 0 0 1px #991b1b;
     }
 
+    .inline-cancel-button {
+      min-height: 30px;
+      padding: 3px 9px;
+      border: 1px solid #e6b8b8;
+      border-radius: 7px;
+      background: #fff;
+      color: #a52b2b;
+      font: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .inline-cancel-button:hover { background: #fff5f5; }
+    .inline-cancel-button:disabled { opacity: .55; cursor: wait; }
+    .timeline-cancel-wrap { display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+    .extension-assets-table { min-width: 900px; }
+
     /* 延長回数バッジ */
     .timeline-name .extension-count-badge,
     .extension-count-badge {
@@ -1255,9 +1272,9 @@
             </select>
           </div>
         </div>
-        <button class="refresh-button" id="refreshButton" disabled title="在庫を再読み込み">
+        <button class="refresh-button" id="refreshButton" disabled title="在庫を更新">
           <i data-lucide="refresh-cw"></i>
-          在庫を再読み込み
+          在庫を更新
         </button>
       </div>
       <div class="connection" id="connection">
@@ -1390,7 +1407,7 @@
         </div>
         <button type="button" class="refresh-button" id="refreshLoanAssets">
           <i data-lucide="refresh-cw"></i>
-          物品一覧を更新
+          一覧を更新
         </button>
       </div>
 
@@ -1449,7 +1466,7 @@
         </div>
         <button type="button" class="refresh-button" id="refreshReturnAssets">
           <i data-lucide="refresh-cw"></i>
-          貸出中一覧を更新
+          一覧を更新
         </button>
       </div>
 
@@ -1515,7 +1532,7 @@
         </div>
         <button type="button" class="refresh-button" id="refreshExtensionAssets">
           <i data-lucide="refresh-cw"></i>
-          貸出中一覧を更新
+          一覧を更新
         </button>
       </div>
 
@@ -1528,10 +1545,11 @@
               <th>識別ネーム</th>
               <th>現在の返却予定日</th>
               <th>変更後の返却予定日</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody id="extensionAssetBody">
-            <tr><td colspan="5">貸出中の物品情報を読み込んでいます。</td></tr>
+            <tr><td colspan="6">貸出中の物品情報を読み込んでいます。</td></tr>
           </tbody>
         </table>
       </div>
@@ -2001,7 +2019,7 @@ let extensionAssetsLoading = false;
 
     // 通信エラー
     script.onerror = () => {
-      const message = "サーバーとの通信に失敗しました。";
+      const message = "通信に失敗しました。";
       try {
         if (typeof onError === "function") {
           onError(message);
@@ -2015,7 +2033,7 @@ let extensionAssetsLoading = false;
 
     // タイムアウト
     const timeoutId = setTimeout(() => {
-      const message = "サーバーから応答がありません。時間をおいて再試行してください。";
+      const message = "応答がありません。もう一度お試しください。";
       try {
         if (typeof onError === "function") {
           onError(message);
@@ -2181,13 +2199,13 @@ loadMasterData();
       data => {
 
         if (!data || data.success !== true) {
-          showError(data?.message || "マスター取得に失敗しました。");
+          showError(data?.message || "拠点情報を読み込めませんでした。");
           return;
         }
         console.log("マスターデータ確認：", data);
 
         if (!Array.isArray(data.bases) || data.bases.length === 0) {
-          showError("有効な拠点が登録されていません。");
+          showError("使える拠点が登録されていません。");
           return;
         }
 
@@ -2202,7 +2220,7 @@ loadMasterData();
           refreshButton.disabled = true;
 
           showError(
-            "拠点を特定できません。拠点専用URLを確認してください。"
+            "拠点情報がありません。拠点専用URLを確認してください。"
           );
 
           return;
@@ -2315,7 +2333,7 @@ loadInventory(currentBranchId);
         refreshButton.disabled = false;
 
         if (!data || data.success !== true) {
-          showError(data?.message || "在庫取得に失敗しました。");
+          showError(data?.message || "在庫を読み込めませんでした。");
           return;
         }
 
@@ -2324,10 +2342,10 @@ loadInventory(currentBranchId);
         setConnection("接続完了");
 
         showStatus(
-          data.branchName + "の在庫情報を取得しました。"
+          data.branchName + "の在庫を読み込みました。"
         );
 
-        showToast("在庫情報を更新しました。");
+        showToast("在庫を更新しました。");
 
       }
     );
@@ -2346,7 +2364,7 @@ loadInventory(currentBranchId);
     callApi(
       { action: "individuals", branchId: branchId },
       data => renderIndividualAssetData(data),
-      message => showError("物品情報の取得に失敗しました。" + message)
+      message => showError("物品情報を読み込めませんでした。" + message)
     );
   }
 
@@ -2357,7 +2375,7 @@ loadInventory(currentBranchId);
     body.replaceChildren();
 
     if (!data || data.success !== true) {
-      body.textContent = "物品情報を取得できませんでした。";
+      body.textContent = "物品情報を読み込めませんでした。";
       count.textContent = "取得失敗";
       return;
     }
@@ -2470,7 +2488,7 @@ function editIndividualNote(asset, clickedButton) {
     verifyNoteUpdate(1);
   }).catch(() => {
     resetButton();
-    showError("備考の更新リクエストを送信できませんでした。");
+    showError("備考を保存できませんでした。");
   });
 
   function verifyNoteUpdate(attempt) {
@@ -2483,7 +2501,7 @@ function editIndividualNote(asset, clickedButton) {
 
         if (updatedAsset && (updatedAsset.note || "") === note) {
           renderIndividualAssetData(data);
-          showToast("備考を更新しました。");
+          showToast("備考を保存しました。");
           return;
         }
 
@@ -2500,7 +2518,7 @@ function editIndividualNote(asset, clickedButton) {
     }
 
     loadIndividualAssets(currentBranchId);
-    showError("備考の更新を確認できませんでした。一覧を再読み込みしてください。");
+    showError("備考を更新できませんでした。一覧を更新してください。");
   }
 
   function resetButton() {
@@ -2529,7 +2547,7 @@ function renderLoanAssets(assets) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 5;
-    cell.textContent = "現在、貸出可能な物品はありません。";
+    cell.textContent = "貸し出せる物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -2641,12 +2659,12 @@ async function registerLoan() {
   const note = document.getElementById("loanNote").value.trim();
 
   if (!currentBranchId) {
-    showToast("拠点を特定できません。");
+    showToast("拠点情報がありません。");
     return;
   }
 
   if (!categoryId) {
-    showToast("対象者区分を選択してください。");
+    showToast("対象者区分を選んでください。");
     document.getElementById("loanCategory").focus();
     return;
   }
@@ -2662,7 +2680,7 @@ async function registerLoan() {
   ).filter(row => row.querySelector(".loan-asset-check:checked"));
 
   if (selectedRows.length === 0) {
-    showToast("貸し出す物品を選択してください。");
+    showToast("貸し出す物品を選んでください。");
     return;
   }
 
@@ -2672,13 +2690,13 @@ async function registerLoan() {
     const dueDate = row.querySelector(".loan-due-date").value;
 
     if (!dueDate) {
-      showToast("選択した物品すべてに返却予定日を入力してください。");
+      showToast("選んだ物品の返却予定日を入力してください。");
       row.querySelector(".loan-due-date").focus();
       return;
     }
 
     if (dueDate < loanDate) {
-      showToast("返却予定日は貸出日以降にしてください。");
+      showToast("返却予定日は貸出日以降の日付にしてください。");
       row.querySelector(".loan-due-date").focus();
       return;
     }
@@ -2706,7 +2724,7 @@ async function registerLoan() {
       })
     });
 
-    button.textContent = "登録結果を確認中...";
+    button.textContent = "確認中...";
 
     // no-corsの応答本文は読めないため、物品状態の更新で登録結果を確認
     callApi(
@@ -2716,7 +2734,7 @@ async function registerLoan() {
         button.textContent = "貸出を登録";
 
         if (!data || data.success !== true) {
-          showError("貸出後の物品状態を確認できませんでした。物品一覧を再読み込みしてください。");
+          showError("貸出結果を確認できませんでした。一覧を更新してください。");
           button.disabled = false;
           return;
         }
@@ -2725,7 +2743,7 @@ async function registerLoan() {
         const allLoaned = items.every(item => statusById.get(item.individualId) === "貸出中");
 
         if (!allLoaned) {
-          showError("貸出登録を確認できませんでした。入力内容と物品の状態を確認してください。");
+          showError("貸出できませんでした。物品の状態を確認してください。");
           button.disabled = false;
           return;
         }
@@ -2735,13 +2753,13 @@ async function registerLoan() {
         loanTimelineCache = null;
         loanTimelineCacheAt = 0;
         loadInventory(currentBranchId, { skipIndividualAssets: true });
-        showToast(items.length + "点の貸出を登録しました。");
+        showToast("貸出を登録しました（" + items.length + "点）。");
       },
       message => {
         loanSubmitting = false;
         button.disabled = false;
         button.textContent = "貸出を登録";
-        showError("貸出後の確認に失敗しました。" + message);
+        showError("貸出を確認できませんでした。" + message);
       }
     );
 
@@ -2749,7 +2767,7 @@ async function registerLoan() {
     loanSubmitting = false;
     button.disabled = false;
     button.textContent = "貸出を登録";
-    showError("貸出登録の送信に失敗しました。通信状態を確認してください。");
+    showError("貸出を送信できませんでした。通信を確認してください。");
   }
 }
 
@@ -2777,7 +2795,7 @@ function renderReturnAssets(assets) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
     cell.colSpan = 6;
-    cell.textContent = "現在、返却対象の物品はありません。";
+    cell.textContent = "返却する物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -2861,7 +2879,7 @@ async function registerReturn() {
   const note = document.getElementById("returnNote").value.trim();
 
   if (!currentBranchId) {
-    showToast("拠点を特定できません。");
+    showToast("拠点情報がありません。");
     return;
   }
 
@@ -2876,7 +2894,7 @@ async function registerReturn() {
   );
 
   if (selected.length === 0) {
-    showToast("返却する物品を選択してください。");
+    showToast("返却する物品を選んでください。");
     return;
   }
 
@@ -2926,7 +2944,7 @@ async function registerReturn() {
 
         if (!data || data.success !== true) {
           button.disabled = false;
-          showError("返却後の物品状態を確認できませんでした。物品一覧を更新してください。");
+          showError("返却結果を確認できませんでした。一覧を更新してください。");
           return;
         }
 
@@ -2941,7 +2959,7 @@ async function registerReturn() {
 
         if (!allReturned) {
           button.disabled = false;
-          showError("返却登録を確認できませんでした。物品の状態を確認してください。");
+          showError("返却できませんでした。物品の状態を確認してください。");
           return;
         }
 
@@ -2950,17 +2968,15 @@ async function registerReturn() {
         loanTimelineCache = null;
         loanTimelineCacheAt = 0;
         loadInventory(currentBranchId, { skipIndividualAssets: true });
-        const repairCount = items.filter(item => item.returnStatus === "整備が必要").length;
-        const normalCount = items.length - repairCount;
         showToast(
-          "返却 " + items.length + "点を登録しました（通常 " + normalCount + "点・整備 " + repairCount + "点）。"
+          "返却を登録しました（" + items.length + "点）。"
         );
       },
       message => {
         returnSubmitting = false;
         button.disabled = false;
         button.textContent = "返却を登録";
-        showError("返却後の確認に失敗しました。" + message);
+        showError("返却を確認できませんでした。" + message);
       }
     );
 
@@ -2968,7 +2984,7 @@ async function registerReturn() {
     returnSubmitting = false;
     button.disabled = false;
     button.textContent = "返却を登録";
-    showError("返却登録の送信に失敗しました。通信状態を確認してください。");
+    showError("返却を送信できませんでした。通信を確認してください。");
   }
 }
 
@@ -3004,7 +3020,7 @@ function loadExtensionAssets(branchId, forceRefresh = false) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
         cell.colSpan = 5;
-        cell.textContent = data?.message || "延長対象を取得できませんでした。";
+        cell.textContent = data?.message || "延長する物品を読み込めませんでした。";
         row.appendChild(cell);
         body.appendChild(row);
         document.getElementById("extensionAssetCount").textContent = "取得失敗";
@@ -3018,7 +3034,7 @@ function loadExtensionAssets(branchId, forceRefresh = false) {
     },
     message => {
       extensionAssetsLoading = false;
-      showError("延長対象の取得に失敗しました。" + message);
+      showError("延長する物品を読み込めませんでした。" + message);
     }
   );
 }
@@ -3029,11 +3045,7 @@ function renderExtensionAssets(items) {
   const body = document.getElementById("extensionAssetBody");
   const count = document.getElementById("extensionAssetCount");
   const button = document.getElementById("registerExtensionButton");
-
-  // 履歴表示用APIには返却済みも含まれるため、延長対象は貸出中だけに限定する。
-  const activeItems = (Array.isArray(items) ? items : []).filter(item =>
-    item.status === "貸出中"
-  );
+  const activeItems = (Array.isArray(items) ? items : []).filter(item => item.status === "貸出中");
 
   body.replaceChildren();
   count.textContent = "延長対象 " + activeItems.length + "点";
@@ -3042,8 +3054,8 @@ function renderExtensionAssets(items) {
   if (activeItems.length === 0) {
     const row = document.createElement("tr");
     const cell = document.createElement("td");
-    cell.colSpan = 5;
-    cell.textContent = "現在、延長できる貸出中の物品はありません。";
+    cell.colSpan = 6;
+    cell.textContent = "延長できる物品はありません。";
     row.appendChild(cell);
     body.appendChild(row);
     return;
@@ -3051,7 +3063,6 @@ function renderExtensionAssets(items) {
 
   activeItems.forEach(item => {
     const row = document.createElement("tr");
-
     const selectCell = document.createElement("td");
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -3065,7 +3076,7 @@ function renderExtensionAssets(items) {
     itemCell.textContent = item.itemName;
 
     const identifierCell = document.createElement("td");
-    identifierCell.textContent = item.identifier;
+    identifierCell.appendChild(document.createTextNode(item.identifier || ""));
     const extensionCount = Number(item.extensionCount || 0);
     if (extensionCount > 0) {
       const badge = document.createElement("span");
@@ -3089,12 +3100,23 @@ function renderExtensionAssets(items) {
     dateInput.min = getNextDate(item.dueDate);
     newDateCell.appendChild(dateInput);
 
+    const actionCell = document.createElement("td");
+    if (extensionCount > 0 && item.latestExtensionItemId) {
+      const cancelButton = document.createElement("button");
+      cancelButton.type = "button";
+      cancelButton.className = "inline-cancel-button";
+      cancelButton.textContent = "延長取消";
+      cancelButton.addEventListener("click", () => cancelLatestExtension(item, cancelButton));
+      actionCell.appendChild(cancelButton);
+    } else {
+      actionCell.textContent = "－";
+    }
+
     checkbox.addEventListener("change", () => {
       dateInput.disabled = !checkbox.checked;
       if (!checkbox.checked) dateInput.value = "";
     });
-
-    row.append(selectCell, itemCell, identifierCell, currentDateCell, newDateCell);
+    row.append(selectCell, itemCell, identifierCell, currentDateCell, newDateCell, actionCell);
     body.appendChild(row);
   });
 }
@@ -3112,6 +3134,86 @@ function getNextDate(dateText) {
     String(date.getDate()).padStart(2, "0");
 }
 
+// 貸出取消
+async function cancelLoan(item, cancelButton) {
+  const message = "この貸出を取り消しますか？\nこの貸出に含まれる物品はすべて利用可能に戻ります。";
+  if (!window.confirm(message)) return;
+  if (cancelButton) {
+    cancelButton.disabled = true;
+    cancelButton.textContent = "取消中...";
+  }
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify({ action: "cancelLoan", loanId: item.loanId })
+    });
+    callApi(
+      { action: "loanedItems", branchId: currentBranchId },
+      data => {
+        if (!data || data.success !== true || !Array.isArray(data.items) || data.items.some(row => row.loanId === item.loanId)) {
+          if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "貸出取消"; }
+          showError("貸出を取り消せませんでした。一覧を更新してください。");
+          return;
+        }
+        loanTimelineCache = { branchId: currentBranchId, items: data.items };
+        loanTimelineCacheAt = Date.now();
+        renderLoanTimeline(data.items);
+        showToast("貸出を取り消しました。");
+        loadInventory(currentBranchId, { skipIndividualAssets: true });
+      },
+      message => {
+        if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "貸出取消"; }
+        showError("貸出を取り消せませんでした。" + message);
+      }
+    );
+  } catch (error) {
+    if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "貸出取消"; }
+    showError("貸出を取り消せませんでした。通信を確認してください。");
+  }
+}
+
+// 直近の延長を取り消す
+async function cancelLatestExtension(item, cancelButton) {
+  if (!window.confirm("この物品の直近の延長を取り消しますか？返却予定日は延長前の日付に戻ります。")) return;
+  const previousCount = Number(item.extensionCount || 0);
+  if (cancelButton) { cancelButton.disabled = true; cancelButton.textContent = "取消中..."; }
+  try {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify({ action: "cancelExtension", extensionItemId: item.latestExtensionItemId })
+    });
+    callApi(
+      { action: "loanedItems", branchId: currentBranchId },
+      data => {
+        const updated = data && Array.isArray(data.items)
+          ? data.items.find(row => row.loanItemId === item.loanItemId)
+          : null;
+        if (!updated || Number(updated.extensionCount || 0) !== previousCount - 1) {
+          if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "延長取消"; }
+          showError("延長を取り消せませんでした。一覧を更新してください。");
+          return;
+        }
+        loanTimelineCache = { branchId: currentBranchId, items: data.items };
+        loanTimelineCacheAt = Date.now();
+        renderExtensionAssets(data.items);
+        renderLoanTimeline(data.items);
+        showToast("延長を取り消しました。");
+      },
+      message => {
+        if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "延長取消"; }
+        showError("延長を取り消せませんでした。" + message);
+      }
+    );
+  } catch (error) {
+    if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "延長取消"; }
+    showError("延長を取り消せませんでした。通信を確認してください。");
+  }
+}
+
 // 復元: registerExtension
 
 async function registerExtension() {
@@ -3122,7 +3224,7 @@ async function registerExtension() {
   const note = document.getElementById("extensionNote").value.trim();
 
   if (!currentBranchId) {
-    showToast("拠点を特定できません。");
+    showToast("拠点情報がありません。");
     return;
   }
 
@@ -3137,7 +3239,7 @@ async function registerExtension() {
   );
 
   if (selected.length === 0) {
-    showToast("延長する物品を選択してください。");
+    showToast("延長する物品を選んでください。");
     return;
   }
 
@@ -3154,15 +3256,15 @@ async function registerExtension() {
 
   for (const item of items) {
     if (!item.newDueDate) {
-      showToast("選択したすべての物品に変更後の返却予定日を入力してください。");
+      showToast("選んだ物品の変更後の返却予定日を入力してください。");
       return;
     }
     if (item.newDueDate <= item.oldDueDate) {
-      showToast("変更後の返却予定日は現在の日付より後にしてください。");
+      showToast("変更後の日付は、現在の返却予定日より後にしてください。");
       return;
     }
     if (item.newDueDate < receptionDate) {
-      showToast("変更後の返却予定日は受付日以降にしてください。");
+      showToast("変更後の日付は受付日以降にしてください。");
       return;
     }
   }
@@ -3189,7 +3291,7 @@ async function registerExtension() {
       })
     });
 
-    button.textContent = "登録結果を確認中...";
+    button.textContent = "確認中...";
 
     callApi(
       { action: "loanedItems", branchId: currentBranchId },
@@ -3199,7 +3301,7 @@ async function registerExtension() {
 
         if (!data || data.success !== true || !Array.isArray(data.items)) {
           button.disabled = false;
-          showError("延長後の返却予定日を確認できませんでした。一覧を更新してください。");
+          showError("延長後の日付を確認できませんでした。一覧を更新してください。");
           return;
         }
 
@@ -3208,7 +3310,7 @@ async function registerExtension() {
 
         if (!allExtended) {
           button.disabled = false;
-          showError("延長受付を確認できませんでした。返却予定日を確認してください。");
+          showError("延長できませんでした。返却予定日を確認してください。");
           return;
         }
 
@@ -3216,20 +3318,20 @@ async function registerExtension() {
         loanTimelineCache = { branchId: currentBranchId, items: data.items };
         loanTimelineCacheAt = Date.now();
         renderExtensionAssets(data.items);
-        showToast("電話1回分の延長受付（" + items.length + "点）を登録しました。");
+        showToast("延長を受け付けました（" + items.length + "点）。");
       },
       message => {
         extensionSubmitting = false;
         button.disabled = false;
         button.textContent = "延長を登録";
-        showError("延長後の確認に失敗しました。" + message);
+        showError("延長を確認できませんでした。" + message);
       }
     );
   } catch (error) {
     extensionSubmitting = false;
     button.disabled = false;
     button.textContent = "延長を登録";
-    showError("延長受付の送信に失敗しました。通信状態を確認してください。");
+    showError("延長を送信できませんでした。通信を確認してください。");
   }
 }
 
@@ -3243,11 +3345,11 @@ function registerIndividual() {
   const note = document.getElementById("individualNote").value.trim();
 
   if (!currentBranchId) {
-    showToast("拠点を特定できません。");
+    showToast("拠点情報がありません。");
     return;
   }
   if (!itemId) {
-    showToast("福祉用具を選択してください。");
+    showToast("福祉用具を選んでください。");
     return;
   }
   if (!identifier) {
@@ -3268,7 +3370,7 @@ function registerIndividual() {
     async data => {
       if (!data || data.success !== true) {
         resetButton();
-        showError("登録済み物品の確認に失敗しました。");
+        showError("登録済みの物品を確認できませんでした。");
         return;
       }
 
@@ -3279,7 +3381,7 @@ function registerIndividual() {
 
       if (duplicate) {
         resetButton();
-        showError("同じ福祉用具・識別ネームは既に登録されています。");
+        showError("同じ福祉用具と識別ネームが登録済みです。");
         return;
       }
 
@@ -3300,7 +3402,7 @@ function registerIndividual() {
           })
         });
 
-        button.textContent = "登録結果を確認中...";
+        button.textContent = "確認中...";
 
         // GASの書き込み直後に一覧へ反映されるまで、最大6回確認する。
         // no-corsではPOSTの応答本文を読めないため、一覧への反映を確認して成功判定する。
@@ -3314,7 +3416,7 @@ function registerIndividual() {
                   return;
                 }
                 resetButton();
-                showError("登録後の一覧取得に失敗しました。物品一覧を更新して確認してください。");
+                showError("登録後の一覧読み込めませんでした。一覧を更新して確認してください。");
                 return;
               }
 
@@ -3335,7 +3437,7 @@ function registerIndividual() {
 
               if (!newAsset) {
                 // 登録失敗と断定しない。送信後の一覧反映が確認できなかったことだけを通知する。
-                showError("登録処理は送信しましたが、一覧への反映を確認できませんでした。二重登録を避けるため、物品一覧を確認してください。");
+                showError("登録されたか確認できませんでした。一覧を確認してください。");
                 return;
               }
 
@@ -3350,7 +3452,7 @@ function registerIndividual() {
                 return;
               }
               resetButton();
-              showError("登録後の一覧確認に失敗しました。物品一覧を更新して確認してください。" + message);
+              showError("登録を確認できませんでした。一覧を更新してください。" + message);
             }
           );
         };
@@ -3358,12 +3460,12 @@ function registerIndividual() {
         verifyRegistration(1);
       } catch (error) {
         resetButton();
-        showError("登録リクエストの送信に失敗しました。通信状態を確認してください。");
+        showError("登録できませんでした。通信を確認してください。");
       }
     },
     message => {
       resetButton();
-      showError("登録済み物品の確認に失敗しました。" + message);
+      showError("登録済みの物品を確認できませんでした。" + message);
     }
   );
 }
@@ -3398,7 +3500,7 @@ function updateIndividualAsset(asset, command, clickedButton) {
   }).catch(() => {
     actionButtons.forEach(button => { button.disabled = false; });
     clickedButton.textContent = isDelete ? "削除" : (asset.status === "故障中" ? "故障中を解除" : "故障中にする");
-    showError("更新リクエストを送信できませんでした。通信状態を確認してください。");
+    showError("更新できませんでした。通信を確認してください。");
   });
 
   function verifyIndividualAssetUpdate(attempt) {
@@ -3406,7 +3508,7 @@ function updateIndividualAsset(asset, command, clickedButton) {
       { action: "individuals", branchId: currentBranchId },
       data => {
         if (!data || data.success !== true || !Array.isArray(data.assets)) {
-          retryOrFail(attempt, "更新後の物品一覧を取得できませんでした。");
+          retryOrFail(attempt, "更新できませんでした。一覧を更新してください。");
           return;
         }
 
@@ -3438,7 +3540,7 @@ function updateIndividualAsset(asset, command, clickedButton) {
     // POSTはno-corsのため応答本文を直接読めない。失敗ではなく確認不能として伝える。
     loadIndividualAssets(currentBranchId);
     loadInventory(currentBranchId, { skipIndividualAssets: true });
-    showError(message + " 変更が反映されたか、一覧を再読み込みして確認してください。");
+    showError(message + " 変更が反映されたか、一覧を確認してください。");
   }
 }
 
@@ -3611,7 +3713,7 @@ function showSkeleton() {
     callApi({ action: "loanedItems", branchId }, data => {
       loanTimelineLoading = false;
       if (!data || data.success !== true || !Array.isArray(data.items)) {
-        body.innerHTML = '<p class="timeline-empty">貸出状況を取得できませんでした。再読み込みしてください。</p>';
+        body.innerHTML = '<p class="timeline-empty">貸出状況を読み込めませんでした。一覧を更新してください。</p>';
         document.getElementById("timelineCount").textContent = "取得失敗";
         return;
       }
@@ -3620,9 +3722,9 @@ function showSkeleton() {
       renderLoanTimeline(data.items);
     }, message => {
       loanTimelineLoading = false;
-      body.innerHTML = '<p class="timeline-empty">貸出状況の取得に失敗しました。</p>';
+      body.innerHTML = '<p class="timeline-empty">貸出状況を読み込めませんでした。</p>';
       document.getElementById("timelineCount").textContent = "取得失敗";
-      showError("貸出期間一覧の取得に失敗しました。" + message);
+      showError("貸出期間一覧を読み込めませんでした。" + message);
     });
   }
 
@@ -3673,15 +3775,19 @@ function renderLoanTimeline(items) {
       cell.textContent = (d.getMonth()+1)+"/"+d.getDate(); days.appendChild(cell);
     }
     head.append(nameHead,days); grid.appendChild(head);
+    const todayForTimeline = localDateString(new Date());
     const visible = items.filter(item => {
       if (!item.loanDate) return false;
       const finishDate = item.status === "返却済" && item.returnDate ? item.returnDate : item.dueDate;
-      return finishDate && new Date(finishDate+"T23:59:59") >= start && new Date(item.loanDate+"T00:00:00") < end;
+      const isOverdueActive = item.status === "貸出中" && item.dueDate && item.dueDate < todayForTimeline;
+      const overlapsWindow = finishDate && new Date(finishDate + "T23:59:59") >= start;
+      return (overlapsWindow || isOverdueActive) && new Date(item.loanDate + "T00:00:00") < end;
     });
     visible.sort((a,b) => (a.loanDate||"").localeCompare(b.loanDate||"") || (a.itemName||"").localeCompare(b.itemName||"","ja"));
     if (!visible.length) {
       const empty=document.createElement("p"); empty.className="timeline-empty"; empty.textContent="この期間に重なる貸出はありません。"; body.replaceChildren(empty); return;
     }
+    const shownLoanCancelButtons = new Set();
     visible.forEach((item,index) => {
       const row=document.createElement("div"); row.className="timeline-row";
       const name=document.createElement("div"); name.className="timeline-name";
@@ -3718,9 +3824,26 @@ function renderLoanTimeline(items) {
         name.appendChild(extensionBadge);
       }
 
+      if (item.status === "貸出中" && item.canCancelLoan && !shownLoanCancelButtons.has(item.loanId)) {
+        shownLoanCancelButtons.add(item.loanId);
+        const actionWrap = document.createElement("div");
+        actionWrap.className = "timeline-cancel-wrap";
+        const cancelButton = document.createElement("button");
+        cancelButton.type = "button";
+        cancelButton.className = "inline-cancel-button";
+        cancelButton.textContent = "貸出取消";
+        cancelButton.addEventListener("click", () => cancelLoan(item, cancelButton));
+        actionWrap.appendChild(cancelButton);
+        name.appendChild(actionWrap);
+      }
+
       const track=document.createElement("div"); track.className="timeline-track";
       const loan=new Date(item.loanDate+"T00:00:00");
-      const due=new Date(finishDate+"T00:00:00");
+      const isOverdueForBar = item.status === "貸出中" && item.dueDate && item.dueDate < localDateString(new Date());
+      const barFinishDate = isOverdueForBar
+        ? (localDateString(new Date()) < input.value ? input.value : localDateString(new Date()))
+        : finishDate;
+      const due=new Date((barFinishDate || finishDate)+"T00:00:00");
       const left=Math.max(0,(loan-start)/86400000); const right=Math.min(20,(due-start)/86400000+1);
       const bar=document.createElement("div"); bar.className="timeline-bar";
       bar.style.left=(left/20*100)+"%"; bar.style.width=(Math.max(.8,(right-left)/20*100))+"%";
@@ -3784,7 +3907,7 @@ if (isOverdue) {
       data => {
         if (!data || data.success !== true) {
           statusElement.textContent =
-            "集計データの取得に失敗しました。";
+            "集計データの読み込めませんでした。";
           return;
         }
 
@@ -4450,7 +4573,7 @@ if (isOverdue) {
     const table = document.getElementById(tableId);
 
     if (!table) {
-      showToast("コピーする集計表がありません。");
+      showToast("集計表がありません。");
       return;
     }
 
