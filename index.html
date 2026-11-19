@@ -1572,7 +1572,7 @@
           </thead>
           <tbody id="individualBody">
             <tr>
-              <td colspan="4">
+              <td colspan="5">
                 物品情報を読み込んでいます。
               </td>
             </tr>
@@ -2293,16 +2293,7 @@ editButton.addEventListener("click", () =>
 actions.appendChild(editButton);
 
 if (asset.status === "利用可能" || asset.status === "故障中") {
-
-  // 編集ボタン
-  const editButton = document.createElement("button");
-  editButton.type = "button";
-  editButton.className = "individual-action-button";
-  editButton.textContent = "編集";
-  editButton.addEventListener("click", () =>
-    editIndividualAsset(asset, editButton)
-  );
-
+  
   const faultButton = document.createElement("button");
   faultButton.type = "button";
   faultButton.className = "individual-action-button fault";
@@ -2319,7 +2310,7 @@ if (asset.status === "利用可能" || asset.status === "故障中") {
     updateIndividualAsset(asset, "delete", deleteButton)
   );
 
-  actions.append(editButton, faultButton, deleteButton);
+  actions.append(faultButton, deleteButton);
 }
       actionCell.appendChild(actions);
       row.append(itemCell, identifierCell, noteCell, statusCell, actionCell);
@@ -3315,101 +3306,6 @@ function updateIndividualAsset(asset, command, clickedButton) {
     loadIndividualAssets(currentBranchId);
     loadInventory(currentBranchId, { skipIndividualAssets: true });
     showError(message + " 変更が反映されたか、一覧を再読み込みして確認してください。");
-  }
-}
-
-// 登録済み物品の識別ネーム・備考を編集
-function editIndividualAsset(asset, clickedButton) {
-
-  const identifierInput = window.prompt(
-    "識別ネームを入力してください。",
-    asset.identifier || ""
-  );
-
-  if (identifierInput === null) return;
-
-  const identifier = identifierInput.trim();
-
-  if (!identifier) {
-    showError("識別ネームは必須です。");
-    return;
-  }
-
-  const noteInput = window.prompt(
-    "備考を入力してください。",
-    asset.note || ""
-  );
-
-  if (noteInput === null) return;
-
-  const note = noteInput.trim();
-
-  clickedButton.disabled = true;
-  clickedButton.textContent = "保存中...";
-
-  fetch(API_URL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: {
-      "Content-Type": "text/plain;charset=UTF-8"
-    },
-    body: JSON.stringify({
-      action: "updateIndividualAsset",
-      command: "edit",
-      branchId: currentBranchId,
-      individualId: asset.id,
-      identifier: identifier,
-      note: note
-    })
-  })
-  .then(() => verifyUpdate(1))
-  .catch(() => {
-    resetButton();
-    showError("更新リクエストを送信できませんでした。");
-  });
-
-  function verifyUpdate(attempt) {
-
-    callApi(
-      { action: "individuals", branchId: currentBranchId },
-      data => {
-
-        const updatedAsset = data.assets.find(
-          item => item.id === asset.id
-        );
-
-        if (
-          updatedAsset &&
-          updatedAsset.identifier === identifier &&
-          (updatedAsset.note || "") === note
-        ) {
-          renderIndividualAssetData(data);
-          showToast("物品情報を更新しました。");
-          return;
-        }
-
-        retryOrFail(attempt);
-      },
-      () => retryOrFail(attempt)
-    );
-  }
-
-  function retryOrFail(attempt) {
-
-    if (attempt < 6) {
-      setTimeout(() => verifyUpdate(attempt + 1), 350);
-      return;
-    }
-
-    resetButton();
-    loadIndividualAssets(currentBranchId);
-    showError("更新内容を確認できませんでした。一覧を再読み込みしてください。");
-  }
-
-  function resetButton() {
-    if (!clickedButton.isConnected) return;
-    clickedButton.disabled = false;
-    clickedButton.textContent = "編集";
   }
 }
 
