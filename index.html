@@ -2277,30 +2277,34 @@ loadInventory(currentBranchId);
       actions.className = "individual-actions";
 
       if (asset.status === "利用可能" || asset.status === "故障中") {
-        const faultButton = document.createElement("button");
-        faultButton.type = "button";
-        faultButton.className = "individual-action-button fault";
-        faultButton.textContent = asset.status === "故障中" ? "故障中を解除" : "故障中にする";
-        faultButton.addEventListener("click", () =>
-          updateIndividualAsset(asset, "toggleFault", faultButton)
-        );
 
-        const deleteButton = document.createElement("button");
-        deleteButton.type = "button";
-        deleteButton.className = "individual-action-button delete";
-        deleteButton.textContent = "削除";
-        deleteButton.addEventListener("click", () =>
-          updateIndividualAsset(asset, "delete", deleteButton)
-        );
+  // 編集ボタン
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.className = "individual-action-button";
+  editButton.textContent = "編集";
+  editButton.addEventListener("click", () =>
+    editIndividualAsset(asset, editButton)
+  );
 
-        actions.append(faultButton, deleteButton);
-      } else {
-        const note = document.createElement("span");
-        note.className = "individual-action-note";
-        note.textContent = asset.status === "貸出中" ? "貸出中のため操作できません" : (asset.status === "整備中" ? "整備中のため操作できません" : "操作できません");
-        actions.appendChild(note);
-      }
+  const faultButton = document.createElement("button");
+  faultButton.type = "button";
+  faultButton.className = "individual-action-button fault";
+  faultButton.textContent = asset.status === "故障中" ? "故障中を解除" : "故障中にする";
+  faultButton.addEventListener("click", () =>
+    updateIndividualAsset(asset, "toggleFault", faultButton)
+  );
 
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.className = "individual-action-button delete";
+  deleteButton.textContent = "削除";
+  deleteButton.addEventListener("click", () =>
+    updateIndividualAsset(asset, "delete", deleteButton)
+  );
+
+  actions.append(editButton, faultButton, deleteButton);
+}
       actionCell.appendChild(actions);
       row.append(itemCell, identifierCell, statusCell, actionCell);
       body.appendChild(row);
@@ -3228,10 +3232,105 @@ function updateIndividualAsset(asset, command, clickedButton) {
   }
 }
 
+// 登録済み物品の識別ネーム・備考を編集
+function editIndividualAsset(asset, clickedButton) {
+
+  const identifierInput = window.prompt(
+    "識別ネームを入力してください。",
+    asset.identifier || ""
+  );
+
+  if (identifierInput === null) return;
+
+  const identifier = identifierInput.trim();
+
+  if (!identifier) {
+    showError("識別ネームは必須です。");
+    return;
+  }
+
+  const noteInput = window.prompt(
+    "備考を入力してください。",
+    asset.note || ""
+  );
+
+  if (noteInput === null) return;
+
+  const note = noteInput.trim();
+
+  clickedButton.disabled = true;
+  clickedButton.textContent = "保存中...";
+
+  fetch(API_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: {
+      "Content-Type": "text/plain;charset=UTF-8"
+    },
+    body: JSON.stringify({
+      action: "updateIndividualAsset",
+      command: "edit",
+      branchId: currentBranchId,
+      individualId: asset.id,
+      identifier: identifier,
+      note: note
+    })
+  })
+  .then(() => verifyUpdate(1))
+  .catch(() => {
+    resetButton();
+    showError("更新リクエストを送信できませんでした。");
+  });
+
+  function verifyUpdate(attempt) {
+
+    callApi(
+      { action: "individuals", branchId: currentBranchId },
+      data => {
+
+        const updatedAsset = data.assets.find(
+          item => item.id === asset.id
+        );
+
+        if (
+          updatedAsset &&
+          updatedAsset.identifier === identifier &&
+          (updatedAsset.note || "") === note
+        ) {
+          renderIndividualAssetData(data);
+          showToast("物品情報を更新しました。");
+          return;
+        }
+
+        retryOrFail(attempt);
+      },
+      () => retryOrFail(attempt)
+    );
+  }
+
+  function retryOrFail(attempt) {
+
+    if (attempt < 6) {
+      setTimeout(() => verifyUpdate(attempt + 1), 350);
+      return;
+    }
+
+    resetButton();
+    loadIndividualAssets(currentBranchId);
+    showError("更新内容を確認できませんでした。一覧を再読み込みしてください。");
+  }
+
+  function resetButton() {
+    if (!clickedButton.isConnected) return;
+    clickedButton.disabled = false;
+    clickedButton.textContent = "編集";
+  }
+}
+
+
 // 復元: renderInventory
 
-  function renderInventory(data) {
-
+function renderInventory(data) {
     const body =
       document.getElementById("inventoryBody");
 
