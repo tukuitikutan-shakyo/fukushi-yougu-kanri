@@ -3134,9 +3134,9 @@ function getNextDate(dateText) {
     String(date.getDate()).padStart(2, "0");
 }
 
-// 貸出取消
+// 選んだ物品だけ貸出を取り消す
 async function cancelLoan(item, cancelButton) {
-  const message = "この貸出を取り消しますか？\nこの貸出に含まれる物品はすべて利用可能に戻ります。";
+  const message = "「" + (item.itemName || "物品") + "・" + (item.identifier || "") + "」の貸出を取り消しますか？\nこの物品だけ利用可能に戻ります。";
   if (!window.confirm(message)) return;
   if (cancelButton) {
     cancelButton.disabled = true;
@@ -3147,12 +3147,17 @@ async function cancelLoan(item, cancelButton) {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=UTF-8" },
-      body: JSON.stringify({ action: "cancelLoan", loanId: item.loanId })
+      body: JSON.stringify({
+        action: "cancelLoan",
+        loanId: item.loanId,
+        loanItemId: item.loanItemId
+      })
     });
     callApi(
       { action: "loanedItems", branchId: currentBranchId },
       data => {
-        if (!data || data.success !== true || !Array.isArray(data.items) || data.items.some(row => row.loanId === item.loanId)) {
+        if (!data || data.success !== true || !Array.isArray(data.items) ||
+            data.items.some(row => row.loanItemId === item.loanItemId)) {
           if (cancelButton) { cancelButton.disabled = false; cancelButton.textContent = "貸出取消"; }
           showError("貸出を取り消せませんでした。一覧を更新してください。");
           return;
@@ -3787,7 +3792,6 @@ function renderLoanTimeline(items) {
     if (!visible.length) {
       const empty=document.createElement("p"); empty.className="timeline-empty"; empty.textContent="この期間に重なる貸出はありません。"; body.replaceChildren(empty); return;
     }
-    const shownLoanCancelButtons = new Set();
     visible.forEach((item,index) => {
       const row=document.createElement("div"); row.className="timeline-row";
       const name=document.createElement("div"); name.className="timeline-name";
@@ -3824,8 +3828,7 @@ function renderLoanTimeline(items) {
         name.appendChild(extensionBadge);
       }
 
-      if (item.status === "貸出中" && item.canCancelLoan && !shownLoanCancelButtons.has(item.loanId)) {
-        shownLoanCancelButtons.add(item.loanId);
+      if (item.status === "貸出中" && item.canCancelLoan) {
         const actionWrap = document.createElement("div");
         actionWrap.className = "timeline-cancel-wrap";
         const cancelButton = document.createElement("button");
