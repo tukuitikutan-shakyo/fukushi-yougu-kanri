@@ -1790,6 +1790,10 @@
         <i data-lucide="copy"></i>
         集計表をコピー
       </button>
+      <button type="button" class="refresh-button" id="exportMonthlyPdf">
+        <i data-lucide="file-down"></i>
+        PDFで保存
+      </button>
 
       <div id="monthlyReportStatus" class="timeline-note">
         集計データを読み込んでいません。
@@ -1845,6 +1849,10 @@
       <button type="button" class="refresh-button" id="copyAnnualReport">
         <i data-lucide="copy"></i>
         集計表をコピー
+      </button>
+      <button type="button" class="refresh-button" id="exportAnnualPdf">
+        <i data-lucide="file-down"></i>
+        PDFで保存
       </button>
 
       <div id="annualReportStatus" class="timeline-note">
@@ -2083,6 +2091,11 @@ let extensionAssetsLoading = false;
 
     document.getElementById("copyAnnualReport")
       .addEventListener("click", () => copyReportTable("annualReportTable"));
+    document.getElementById("exportMonthlyPdf")
+      .addEventListener("click", () => exportReportPdf("monthly"));
+
+    document.getElementById("exportAnnualPdf")
+      .addEventListener("click", () => exportReportPdf("annual"));
     tabButtons.forEach(tab => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
@@ -3475,7 +3488,7 @@ function registerIndividual() {
   );
 }
 
-// 登録済み個体の故障状態切替・削除
+// 登録済み物品の故障状態切替・削除
 function updateIndividualAsset(asset, command, clickedButton) {
   const isDelete = command === "delete";
   const confirmation = isDelete
@@ -4569,6 +4582,117 @@ if (isOverdue) {
 
     // 古い表と差し替え
     oldTable.replaceWith(newTable);
+  }
+
+  // 集計表をPDFとして保存（ブラウザの印刷画面から「PDFに保存」を選択）
+  function exportReportPdf(type) {
+    const isMonthly = type === "monthly";
+    const tableId = isMonthly ? "monthlyReportTable" : "annualReportTable";
+    const table = document.getElementById(tableId);
+    const reportData = isMonthly ? monthlyReportData : annualReportData;
+
+    if (!reportData || !table || !table.querySelector("tbody tr")) {
+      showToast("先に集計表を読み込んでください。");
+      return;
+    }
+
+    const year = isMonthly
+      ? document.getElementById("monthlyReportYear").value
+      : document.getElementById("annualReportYear").value;
+    const month = isMonthly
+      ? document.getElementById("monthlyReportMonth").value
+      : "";
+    const branchSelect = isMonthly
+      ? document.getElementById("monthlyReportBranchFilter")
+      : null;
+    const branchLabel = branchSelect && branchSelect.value
+      ? branchSelect.options[branchSelect.selectedIndex].textContent
+      : "全拠点";
+    const eraYear = Number(year) - 2018;
+    const reportTitle = isMonthly
+      ? "令和" + eraYear + "年度 " + month + "月 月別集計"
+      : "令和" + eraYear + "年度 年度集計";
+
+    // 印刷用に表を複製し、画面用の横幅制限を解除する
+    const printTable = table.cloneNode(true);
+    printTable.removeAttribute("id");
+    printTable.style.minWidth = "0";
+    printTable.style.width = "100%";
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      showToast("PDF出力画面を開けませんでした。ポップアップを許可してください。");
+      return;
+    }
+
+    const safeTitle = reportTitle.replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[char]);
+    const safeBranch = branchLabel.replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[char]);
+    const createdAt = new Date().toLocaleString("ja-JP");
+
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${safeTitle}</title>
+<style>
+  @page { size: A3 landscape; margin: 8mm; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: #263746;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+    font-size: 8pt;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1 { margin: 0 0 3mm; font-size: 15pt; }
+  .print-meta { margin: 0 0 4mm; color: #526575; font-size: 8pt; }
+  .print-help { margin: 0 0 4mm; color: #667085; font-size: 7pt; }
+  table { width: 100%; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
+  caption { padding: 0 0 3mm !important; text-align: left; font-size: 10pt; font-weight: 700; }
+  th, td {
+    border: 1px solid #b8c3cc;
+    padding: 2.2mm 1.3mm;
+    font-size: 7pt;
+    line-height: 1.25;
+    text-align: center;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+  }
+  th { background: #eaf0f4 !important; font-weight: 700; }
+  td:first-child, td:nth-child(2) { text-align: left; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; page-break-inside: avoid; }
+  tbody tr:nth-child(even) { background: #fafbfd !important; }
+  @media screen {
+    body { padding: 14mm; background: #eef2f5; }
+    .print-page { max-width: 400mm; margin: 0 auto; padding: 12mm; background: white; }
+    .print-help { padding: 8px 10px; background: #edf4f8; border-radius: 5px; }
+  }
+  @media print { .print-help { display: none; } }
+</style>
+</head>
+<body>
+  <main class="print-page">
+    <h1>${safeTitle}</h1>
+    <p class="print-meta">表示：${safeBranch}　／　出力日時：${createdAt}</p>
+    <p class="print-help">印刷画面が開いたら、送信先またはプリンターで「PDFに保存」を選んでください。</p>
+    ${printTable.outerHTML}
+  </main>
+<script>
+  window.addEventListener("load", () => {
+    setTimeout(() => { window.focus(); window.print(); }, 400);
+  });
+<\/script>
+</body>
+</html>`);
+    printWindow.document.close();
   }
 
   // 集計表をタブ区切りでコピー
