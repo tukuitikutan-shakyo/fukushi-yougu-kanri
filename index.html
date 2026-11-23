@@ -3488,7 +3488,7 @@ function registerIndividual() {
   );
 }
 
-// 登録済み物品の故障状態切替・削除
+// 登録済み個体の故障状態切替・削除
 function updateIndividualAsset(asset, command, clickedButton) {
   const isDelete = command === "delete";
   const confirmation = isDelete
@@ -4093,7 +4093,7 @@ if (isOverdue) {
             const itemCell = document.createElement("td");
             itemCell.textContent = itemName;
             itemCell.rowSpan = groupRowSpan;
-            itemCell.className = "report-group-cell";
+            itemCell.className = "report-group-cell report-item-cell";
             tr.appendChild(itemCell);
           }
 
@@ -4101,11 +4101,12 @@ if (isOverdue) {
             const branchCell = document.createElement("td");
             branchCell.textContent = branch.name;
             branchCell.rowSpan = 2;
-            branchCell.className = "report-group-cell";
+            branchCell.className = "report-group-cell report-branch-cell";
             tr.appendChild(branchCell);
           }
 
           const kindCell = document.createElement("td");
+          kindCell.className = "report-kind-cell";
           kindCell.textContent = isExtension ? "延長" : "貸出";
           tr.appendChild(kindCell);
 
@@ -4238,7 +4239,7 @@ if (isOverdue) {
             const itemCell = document.createElement("td");
             itemCell.textContent = itemName;
             itemCell.rowSpan = groupRowSpan;
-            itemCell.className = "report-group-cell";
+            itemCell.className = "report-group-cell report-item-cell";
             tr.appendChild(itemCell);
           }
 
@@ -4246,11 +4247,12 @@ if (isOverdue) {
             const branchCell = document.createElement("td");
             branchCell.textContent = branch.name;
             branchCell.rowSpan = 2;
-            branchCell.className = "report-group-cell";
+            branchCell.className = "report-group-cell report-branch-cell";
             tr.appendChild(branchCell);
           }
 
           const kindCell = document.createElement("td");
+          kindCell.className = "report-kind-cell";
           kindCell.textContent = isExtension ? "延長" : "貸出";
           tr.appendChild(kindCell);
 
@@ -4584,7 +4586,8 @@ if (isOverdue) {
     oldTable.replaceWith(newTable);
   }
 
-  // 集計表をPDFとして保存（ブラウザの印刷画面から「PDFに保存」を選択）
+  // 集計表をA4縦のPDFとして保存
+  // 見本に合わせ、物品名を縦にまとめ、拠点行の次に「延長」を表示する。
   function exportReportPdf(type) {
     const isMonthly = type === "monthly";
     const tableId = isMonthly ? "monthlyReportTable" : "annualReportTable";
@@ -4609,15 +4612,159 @@ if (isOverdue) {
       ? branchSelect.options[branchSelect.selectedIndex].textContent
       : "全拠点";
     const eraYear = Number(year) - 2018;
-    const reportTitle = isMonthly
-      ? "令和" + eraYear + "年度 " + month + "月 月別集計"
-      : "令和" + eraYear + "年度 年度集計";
+    const mainTitle = "令和" + eraYear + "年度　福祉用具無料貸出事業";
+    const periodLabel = isMonthly ? month + "月分" : "年度集計";
 
-    // 印刷用に表を複製し、画面用の横幅制限を解除する
-    const printTable = table.cloneNode(true);
-    printTable.removeAttribute("id");
-    printTable.style.minWidth = "0";
-    printTable.style.width = "100%";
+    const escapeHtml = value => String(value).replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[char]);
+
+    // 元の表を物品ごとのまとまりに分ける
+    const sourceRows = Array.from(table.tBodies[0].rows);
+    const groups = [];
+    for (let i = 0; i < sourceRows.length;) {
+      const itemCell = sourceRows[i].querySelector(".report-item-cell");
+      if (!itemCell) {
+        showError("集計表の行構成を読み取れませんでした。集計を更新してから再度お試しください。");
+        return;
+      }
+      const span = Math.max(1, Number(itemCell.rowSpan) || 1);
+      groups.push({
+        name: itemCell.textContent.trim(),
+        rows: sourceRows.slice(i, i + span)
+      });
+      i += span;
+    }
+
+    const totalGroupIndex = groups.findIndex(group => group.name === "全物品合計");
+    const totalGroup = totalGroupIndex >= 0 ? groups.splice(totalGroupIndex, 1)[0] : null;
+
+    // 物品3つを目安にページを分ける。全物品合計は最後のページに置く。
+    const pages = [];
+    for (let i = 0; i < groups.length; i += 3) {
+      pages.push(groups.slice(i, i + 3));
+    }
+    if (!pages.length) pages.push([]);
+    if (totalGroup) {
+      const lastPage = pages[pages.length - 1];
+      if (lastPage.length > 0 && lastPage.length < 3) {
+        lastPage.push(totalGroup);
+      } else {
+        pages.push([totalGroup]);
+      }
+    }
+
+    // 印刷用の表ヘッダーを作成（「区分」列は拠点欄にまとめる）
+    const sourceHead = table.querySelector("thead");
+    if (!sourceHead) {
+      showError("集計表の見出しがありません。集計を更新してください。");
+      return;
+    }
+    const metricCount = sourceRows[0].querySelectorAll(".report-kind-cell")[0]
+      ? Array.from(sourceRows[0].cells).slice(
+          Array.from(sourceRows[0].cells).indexOf(sourceRows[0].querySelector(".report-kind-cell")) + 1
+        ).length
+      : (isMonthly ? 18 : 16);
+    const shadedMetricCount = isMonthly ? 4 : 2;
+
+    function makePrintTable(pageGroups) {
+      const printTable = document.createElement("table");
+      printTable.className = "print-report-table";
+      printTable.style.setProperty("--metric-count", metricCount);
+
+      const colgroup = document.createElement("colgroup");
+      const itemCol = document.createElement("col");
+      itemCol.className = "print-item-col";
+      itemCol.style.width = "7mm";
+      colgroup.appendChild(itemCol);
+      const branchCol = document.createElement("col");
+      branchCol.className = "print-branch-col";
+      branchCol.style.width = "12mm";
+      colgroup.appendChild(branchCol);
+      const metricWidth = ((200 - 19) / metricCount).toFixed(3) + "mm";
+      for (let i = 0; i < metricCount; i++) {
+        const col = document.createElement("col");
+        col.style.width = metricWidth;
+        if (i >= metricCount - shadedMetricCount) col.className = "print-total-col";
+        colgroup.appendChild(col);
+      }
+      printTable.appendChild(colgroup);
+
+      const printHead = sourceHead.cloneNode(true);
+      const firstHeaderRow = printHead.rows[0];
+      if (firstHeaderRow && firstHeaderRow.cells.length >= 3) {
+        firstHeaderRow.deleteCell(2); // 貸出／延長の区分列を取り除く
+        firstHeaderRow.cells[0].textContent = "";
+        firstHeaderRow.cells[1].textContent = "";
+      }
+      if (isMonthly && firstHeaderRow) {
+        Array.from(firstHeaderRow.cells).forEach(cell => {
+          if (cell.textContent.trim() === "年度累計") cell.textContent = "累計";
+        });
+      }
+      if (firstHeaderRow) {
+        Array.from(firstHeaderRow.cells).slice(-2).forEach(cell => {
+          cell.classList.add("print-total-head");
+        });
+      }
+      printTable.appendChild(printHead);
+
+      const tbody = document.createElement("tbody");
+      pageGroups.forEach(group => {
+        let previousBranchLabel = "";
+        group.rows.forEach((sourceRow, rowIndex) => {
+          const kindCell = sourceRow.querySelector(".report-kind-cell");
+          if (!kindCell) return;
+          const branchSource = sourceRow.querySelector(".report-branch-cell");
+          const itemSource = sourceRow.querySelector(".report-item-cell");
+          const isExtension = kindCell.textContent.trim() === "延長";
+          const branchLabel = branchSource
+            ? branchSource.textContent.trim()
+            : (previousBranchLabel === "合計" ? "延長合計"
+              : previousBranchLabel === "総合計" ? "延長総合計" : "延長");
+          if (branchSource) previousBranchLabel = branchSource.textContent.trim();
+
+          const row = document.createElement("tr");
+          if (isExtension) row.classList.add("print-extension-row");
+          if (branchLabel.includes("合計") || group.name === "全物品合計") {
+            row.classList.add("print-total-row");
+          }
+          if (branchLabel === "総合計" || branchLabel === "延長総合計") {
+            row.classList.add("print-grand-total-row");
+          }
+
+          if (itemSource) {
+            const itemCell = document.createElement("td");
+            itemCell.className = "print-item-cell";
+            itemCell.rowSpan = itemSource.rowSpan;
+            itemCell.textContent = group.name === "全物品合計" ? "合計" : itemSource.textContent.trim();
+            row.appendChild(itemCell);
+          }
+
+          const branchCell = document.createElement("td");
+          branchCell.className = "print-branch-cell";
+          branchCell.textContent = branchLabel;
+          row.appendChild(branchCell);
+
+          const sourceCells = Array.from(sourceRow.cells);
+          const kindIndex = sourceCells.indexOf(kindCell);
+          sourceCells.slice(kindIndex + 1).forEach((sourceValueCell, index) => {
+            const valueCell = sourceValueCell.cloneNode(true);
+            if (index >= metricCount - shadedMetricCount) valueCell.classList.add("print-total-cell");
+            row.appendChild(valueCell);
+          });
+
+          tbody.appendChild(row);
+        });
+      });
+      printTable.appendChild(tbody);
+      return printTable;
+    }
+
+    const safeMainTitle = escapeHtml(mainTitle);
+    const safePeriod = escapeHtml(periodLabel);
+    const safeBranch = escapeHtml(branchLabel);
+    const createdAt = escapeHtml(new Date().toLocaleString("ja-JP"));
 
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -4625,13 +4772,15 @@ if (isOverdue) {
       return;
     }
 
-    const safeTitle = reportTitle.replace(/[&<>"']/g, char => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    })[char]);
-    const safeBranch = branchLabel.replace(/[&<>"']/g, char => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    })[char]);
-    const createdAt = new Date().toLocaleString("ja-JP");
+    const sheetsHtml = pages.map((pageGroups, pageIndex) => {
+      const title = pageIndex === 0
+        ? `<div class="print-title"><strong>${safeMainTitle}</strong><span>${safePeriod}</span></div>`
+        : `<div class="print-continuation">${safeMainTitle}（続き）</div>`;
+      const meta = pageIndex === 0
+        ? `<div class="print-meta">対象：${safeBranch}　／　出力：${createdAt}</div>`
+        : "";
+      return `<section class="print-sheet">${title}${meta}${makePrintTable(pageGroups).outerHTML}</section>`;
+    }).join("");
 
     printWindow.document.open();
     printWindow.document.write(`<!DOCTYPE html>
@@ -4639,55 +4788,54 @@ if (isOverdue) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${safeTitle}</title>
+<title>${safeMainTitle} ${safePeriod}</title>
 <style>
-  @page { size: A3 landscape; margin: 8mm; }
+  @page { size: A4 portrait; margin: 6mm 5mm; }
   * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    margin: 0;
-    color: #263746;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
-    font-size: 8pt;
+    color: #111;
+    font-family: "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif;
+    font-size: 6pt;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  h1 { margin: 0 0 3mm; font-size: 15pt; }
-  .print-meta { margin: 0 0 4mm; color: #526575; font-size: 8pt; }
-  .print-help { margin: 0 0 4mm; color: #667085; font-size: 7pt; }
-  table { width: 100%; min-width: 0 !important; border-collapse: collapse; table-layout: auto; }
-  caption { padding: 0 0 3mm !important; text-align: left; font-size: 10pt; font-weight: 700; }
-  th, td {
-    border: 1px solid #b8c3cc;
-    padding: 2.2mm 1.3mm;
-    font-size: 7pt;
-    line-height: 1.25;
-    text-align: center;
-    vertical-align: middle;
-    overflow-wrap: anywhere;
-  }
-  th { background: #eaf0f4 !important; font-weight: 700; }
-  td:first-child, td:nth-child(2) { text-align: left; }
-  thead { display: table-header-group; }
-  tr { break-inside: avoid; page-break-inside: avoid; }
-  tbody tr:nth-child(even) { background: #fafbfd !important; }
+  .print-sheet { width: 100%; break-after: page; page-break-after: always; }
+  .print-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .print-title { display: flex; justify-content: space-between; align-items: flex-end; gap: 4mm; margin: 0 0 1.5mm; padding: 0 1mm 1.5mm; border-bottom: 1px solid #111; }
+  .print-title strong { font-size: 11pt; font-weight: 700; }
+  .print-title span { font-size: 10pt; white-space: nowrap; }
+  .print-meta { margin: 0 1mm 2mm; font-size: 5.5pt; color: #333; }
+  .print-continuation { margin: 0 1mm 1.5mm; font-size: 6pt; color: #333; }
+  .print-report-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .print-report-table col.print-item-col { width: 7mm; }
+  .print-report-table col.print-branch-col { width: 12mm; }
+  .print-report-table th, .print-report-table td { border: 0.45pt solid #111; padding: 1.1mm 0.35mm; text-align: center; vertical-align: middle; line-height: 1.05; font-size: 5.8pt; overflow-wrap: anywhere; }
+  .print-report-table thead { display: table-header-group; }
+  .print-report-table thead th { background: #ededed !important; font-weight: 700; }
+  .print-report-table thead tr:first-child th { height: 6mm; font-size: 5.6pt; }
+  .print-report-table thead tr:nth-child(2) th { height: 4.5mm; font-size: 5pt; }
+  .print-report-table .print-total-head, .print-report-table .print-total-cell { background: #dedede !important; }
+  .print-report-table .print-item-cell { writing-mode: vertical-rl; text-orientation: mixed; font-weight: 700; letter-spacing: 0.5mm; background: #d4d4d4 !important; font-size: 7pt; }
+  .print-report-table .print-branch-cell { white-space: nowrap; font-size: 5.8pt; }
+  .print-report-table .print-extension-row td { border-top-style: dashed; }
+  .print-report-table .print-total-row td { background: #e8e8e8 !important; font-weight: 700; }
+  .print-report-table .print-grand-total-row td { background: #d5d5d5 !important; font-weight: 700; border-top-width: 0.9pt; }
+  .print-report-table tr { break-inside: avoid; page-break-inside: avoid; }
   @media screen {
-    body { padding: 14mm; background: #eef2f5; }
-    .print-page { max-width: 400mm; margin: 0 auto; padding: 12mm; background: white; }
-    .print-help { padding: 8px 10px; background: #edf4f8; border-radius: 5px; }
+    body { padding: 10mm; background: #e9edf0; }
+    .print-sheet { width: 200mm; min-height: 287mm; margin: 0 auto 10mm; padding: 6mm 5mm; background: #fff; box-shadow: 0 1mm 4mm rgba(0,0,0,.16); }
   }
-  @media print { .print-help { display: none; } }
+  @media print {
+    .print-sheet { min-height: 0; margin: 0; padding: 0; }
+  }
 </style>
 </head>
 <body>
-  <main class="print-page">
-    <h1>${safeTitle}</h1>
-    <p class="print-meta">表示：${safeBranch}　／　出力日時：${createdAt}</p>
-    <p class="print-help">印刷画面が開いたら、送信先またはプリンターで「PDFに保存」を選んでください。</p>
-    ${printTable.outerHTML}
-  </main>
+${sheetsHtml}
 <script>
   window.addEventListener("load", () => {
-    setTimeout(() => { window.focus(); window.print(); }, 400);
+    setTimeout(() => { window.focus(); window.print(); }, 500);
   });
 <\/script>
 </body>
