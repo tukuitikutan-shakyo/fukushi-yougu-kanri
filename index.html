@@ -1236,6 +1236,106 @@
       vertical-align: middle;
     }
 
+
+
+    /* 要望フォーム */
+    .request-form-button {
+      min-height: 34px;
+      padding: 0 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid #c9d8e3;
+      border-radius: 8px;
+      background: #f4f8fb;
+      color: var(--brand);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .request-form-button:hover { background: #eaf2f7; }
+    .request-form-button svg { width: 15px; height: 15px; }
+    .request-modal-overlay { z-index: 200; }
+    .request-modal {
+      max-width: 600px;
+      max-height: min(88vh, 760px);
+      padding: 24px;
+    }
+    .request-modal-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .request-modal-heading h2 { margin: 0 0 5px; }
+    .request-modal-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .request-modal-close {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .request-form-field { margin-bottom: 16px; }
+    .request-form-field label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .request-form-field textarea {
+      min-height: 150px;
+      padding: 10px 12px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .request-form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      margin-top: 22px;
+    }
+    .request-form-message {
+      margin-top: 12px;
+      color: var(--danger);
+      font-size: 12px;
+    }
+    .request-success {
+      padding: 28px 12px 22px;
+      text-align: center;
+      color: var(--success);
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .request-success svg {
+      display: block;
+      width: 34px;
+      height: 34px;
+      margin: 0 auto 10px;
+    }
+    @media (max-width: 700px) {
+      .request-form-button { width: 30px; min-width: 30px; min-height: 30px; padding: 0; }
+      .request-form-button svg { width: 15px; height: 15px; }
+      .request-button-label { display: none; }
+      .request-modal { padding: 18px; }
+      .request-form-actions { flex-direction: column-reverse; }
+      .request-form-actions button { width: 100%; }
+    }
+
 </style>
 </head>
 
@@ -1260,6 +1360,10 @@
       <small style="font-size:10px; color:var(--muted); font-weight:500;">
   update11191630
 </small>
+      <button type="button" class="request-form-button" id="openRequestForm" aria-haspopup="dialog" aria-label="要望フォームを開く" title="要望フォーム">
+        <i data-lucide="message-square-plus"></i>
+        <span class="request-button-label">要望フォーム</span>
+      </button>
     </div>
     
     <div class="header-right">
@@ -1882,6 +1986,49 @@
 </main>
 
 
+<div class="modal-overlay request-modal-overlay" id="requestModal" aria-hidden="true">
+  <section class="modal request-modal" role="dialog" aria-modal="true" aria-labelledby="requestModalTitle">
+    <div class="request-modal-heading">
+      <div>
+        <h2 id="requestModalTitle">要望フォーム</h2>
+        <p>気づいたことや改善してほしいことを送ってください。</p>
+      </div>
+      <button type="button" class="request-modal-close" id="closeRequestForm" aria-label="閉じる">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+
+    <form id="requestForm">
+      <div class="request-form-field">
+        <label for="requestCategory">種類</label>
+        <select id="requestCategory" class="loan-input" required>
+          <option value="操作・画面の改善">操作・画面の改善</option>
+          <option value="不具合">不具合</option>
+          <option value="機能の追加">機能の追加</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div class="request-form-field">
+        <label for="requestTitle">タイトル</label>
+        <input id="requestTitle" class="loan-input" type="text" maxlength="100" required placeholder="例：貸出期間一覧に検索機能がほしい">
+      </div>
+      <div class="request-form-field">
+        <label for="requestContent">内容</label>
+        <textarea id="requestContent" class="loan-input" maxlength="3000" required placeholder="どの画面で、どうなると使いやすいかを書いてください。"></textarea>
+      </div>
+      <p id="requestFormMessage" class="request-form-message" role="alert" hidden></p>
+      <div class="request-form-actions">
+        <button type="button" class="modal-button" id="cancelRequestForm">閉じる</button>
+        <button type="submit" class="loan-submit-button" id="submitRequestForm">送信する</button>
+      </div>
+    </form>
+    <div id="requestSuccess" class="request-success" hidden>
+      <i data-lucide="check-circle-2"></i>
+      受け付けました
+    </div>
+  </section>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -2067,6 +2214,122 @@ let extensionAssetsLoading = false;
 
     if (window.lucide) {
       lucide.createIcons();
+    }
+
+    // 要望フォーム
+    const requestModal = document.getElementById("requestModal");
+    const requestForm = document.getElementById("requestForm");
+    const requestSuccess = document.getElementById("requestSuccess");
+    const requestSubmitButton = document.getElementById("submitRequestForm");
+    const requestMessage = document.getElementById("requestFormMessage");
+
+    function openRequestForm() {
+      requestForm.reset();
+      requestForm.hidden = false;
+      requestSuccess.hidden = true;
+      requestMessage.hidden = true;
+      requestMessage.textContent = "";
+      requestSubmitButton.disabled = false;
+      requestSubmitButton.textContent = "送信する";
+      requestModal.classList.add("open");
+      requestModal.setAttribute("aria-hidden", "false");
+      setTimeout(() => document.getElementById("requestCategory").focus(), 0);
+    }
+
+    function closeRequestForm() {
+      requestModal.classList.remove("open");
+      requestModal.setAttribute("aria-hidden", "true");
+    }
+
+    document.getElementById("openRequestForm").addEventListener("click", openRequestForm);
+    document.getElementById("closeRequestForm").addEventListener("click", closeRequestForm);
+    document.getElementById("cancelRequestForm").addEventListener("click", closeRequestForm);
+    requestModal.addEventListener("click", event => {
+      if (event.target === requestModal) closeRequestForm();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && requestModal.classList.contains("open")) {
+        closeRequestForm();
+      }
+    });
+
+    requestForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (requestSubmitButton.disabled) return;
+
+      const category = document.getElementById("requestCategory").value;
+      const title = document.getElementById("requestTitle").value.trim();
+      const content = document.getElementById("requestContent").value.trim();
+      if (!title || !content) {
+        requestMessage.textContent = "タイトルと内容を入力してください。";
+        requestMessage.hidden = false;
+        return;
+      }
+
+      const requestId = "REQ-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+      requestSubmitButton.disabled = true;
+      requestSubmitButton.textContent = "送信中...";
+      requestMessage.hidden = true;
+
+      const branchOption = branchSelect && branchSelect.selectedOptions[0];
+      const branchName = branchOption ? branchOption.textContent.trim() : "";
+
+      try {
+        await fetch(API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "text/plain;charset=UTF-8" },
+          body: JSON.stringify({
+            action: "registerFeatureRequest",
+            requestId: requestId,
+            branchId: currentBranchId,
+            branchName: branchName,
+            category: category,
+            title: title,
+            content: content
+          })
+        });
+        verifyFeatureRequest(requestId, 0);
+      } catch (error) {
+        requestSubmitButton.disabled = false;
+        requestSubmitButton.textContent = "送信する";
+        requestMessage.textContent = "送信できませんでした。通信状態を確認して、もう一度お試しください。";
+        requestMessage.hidden = false;
+      }
+    });
+
+    function verifyFeatureRequest(requestId, attempt) {
+      callApi(
+        { action: "featureRequestStatus", requestId: requestId },
+        data => {
+          if (data && data.success === true && data.received === true) {
+            requestForm.hidden = true;
+            requestSuccess.hidden = false;
+            if (window.lucide) lucide.createIcons();
+            showToast("受け付けました");
+            setTimeout(closeRequestForm, 1100);
+            return;
+          }
+          if (attempt < 5) {
+            setTimeout(() => verifyFeatureRequest(requestId, attempt + 1), 450);
+            return;
+          }
+          requestSubmitButton.disabled = false;
+          requestSubmitButton.textContent = "送信する";
+          requestMessage.textContent = "送信を確認できませんでした。重複送信を避けるため、管理者に確認してください。";
+          requestMessage.hidden = false;
+        },
+        () => {
+          if (attempt < 5) {
+            setTimeout(() => verifyFeatureRequest(requestId, attempt + 1), 450);
+            return;
+          }
+          requestSubmitButton.disabled = false;
+          requestSubmitButton.textContent = "送信する";
+          requestMessage.textContent = "送信結果を確認できませんでした。管理者に確認してください。";
+          requestMessage.hidden = false;
+        }
+      );
     }
 
     // タブ切り替え
