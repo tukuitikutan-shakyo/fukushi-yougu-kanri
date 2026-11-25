@@ -1336,6 +1336,31 @@
       .request-form-actions button { width: 100%; }
     }
 
+
+  /* 数値セルは入力欄のように見せるが、通常のテキストとして選択できるようにする。
+     input/textareaを各セルに置くと、複数セルをまたいだドラッグ選択ができないためspanを使用。 */
+  .report-number-box {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 34px;
+    padding: 3px 5px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #263746;
+    text-align: center;
+    white-space: nowrap;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+    font-variant-numeric: tabular-nums;
+  }
+  #monthlyReportTable td:has(.report-number-box),
+  #annualReportTable td:has(.report-number-box) {
+    padding: 3px 4px;
+  }
+
 </style>
 </head>
 
@@ -1886,8 +1911,7 @@
 
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
-        各対象者区分の「件数」「貸出点数」を横並びで表示します。
-        Excelに貼り付ける場合は、下の「数値のみ」欄をコピーしてください。区分別の列だけがタブ区切りでコピーされます。
+        シートサンプルの報告様式に合わせて表示します。Excelへ貼り付ける場合は、数値欄の先頭から必要な範囲をドラッグして選択し、Ctrl+Cでコピーしてください。対象者区分の14列（合計欄の手前）はC～P列に対応します。
       </p>
 
       <button type="button" class="refresh-button" id="exportMonthlyPdf">
@@ -1908,20 +1932,6 @@
   <table class="inventory-table" id="monthlyReportTable">
     <tbody><tr><td>集計データを読み込んでください。</td></tr></tbody>
   </table>
-</div>
-
-<div class="excel-copy-panel" style="margin-top:16px; padding:14px; border:1px solid var(--border); border-radius:12px; background:var(--surface);">
-  <label for="monthlyReportNumbers" style="display:block; font-weight:700; margin-bottom:8px;">Excel貼り付け用（数値のみ）</label>
-  <textarea id="monthlyReportNumbers" rows="8" readonly spellcheck="false" wrap="off"
-    placeholder="集計データを読み込むと、区分別の数値がここに表示されます。"
-    style="display:block; width:100%; min-height:150px; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font:13px/1.5 Consolas, 'Courier New', monospace; white-space:pre; overflow:auto; resize:vertical;"></textarea>
-  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;">
-    <button type="button" class="refresh-button" id="copyMonthlyNumbers">
-      <i data-lucide="copy"></i>
-      数値をコピー
-    </button>
-    <span style="color:var(--muted); font-size:12px;">見出し・物品名・拠点名・右端の合計／年度累計列は含みません。コピー後、Excelの貼り付け先セルでCtrl+V。</span>
-  </div>
 </div>
 
 <div style="display:none" aria-hidden="true">
@@ -1961,8 +1971,7 @@
 
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
-        各対象者区分の「件数」「貸出点数」を横並びで表示します。
-        Excelに貼り付ける場合は、下の「数値のみ」欄をコピーしてください。区分別の列だけがタブ区切りでコピーされます。
+        シートサンプルの報告様式に合わせて表示します。Excelへ貼り付ける場合は、数値欄の先頭から必要な範囲をドラッグして選択し、Ctrl+Cでコピーしてください。対象者区分の14列（合計欄の手前）はC～P列に対応します。
       </p>
       <button type="button" class="refresh-button" id="exportAnnualPdf">
         <i data-lucide="file-down"></i>
@@ -1982,20 +1991,6 @@
   <table class="inventory-table" id="annualReportTable">
     <tbody><tr><td>集計データを読み込んでください。</td></tr></tbody>
   </table>
-</div>
-
-<div class="excel-copy-panel" style="margin-top:16px; padding:14px; border:1px solid var(--border); border-radius:12px; background:var(--surface);">
-  <label for="annualReportNumbers" style="display:block; font-weight:700; margin-bottom:8px;">Excel貼り付け用（数値のみ）</label>
-  <textarea id="annualReportNumbers" rows="8" readonly spellcheck="false" wrap="off"
-    placeholder="集計データを読み込むと、区分別の数値がここに表示されます。"
-    style="display:block; width:100%; min-height:150px; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font:13px/1.5 Consolas, 'Courier New', monospace; white-space:pre; overflow:auto; resize:vertical;"></textarea>
-  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;">
-    <button type="button" class="refresh-button" id="copyAnnualNumbers">
-      <i data-lucide="copy"></i>
-      数値をコピー
-    </button>
-    <span style="color:var(--muted); font-size:12px;">見出し・物品名・拠点名・右端の合計／年度累計列は含みません。コピー後、Excelの貼り付け先セルでCtrl+V。</span>
-  </div>
 </div>
 
 <div style="display:none" aria-hidden="true">
@@ -2437,16 +2432,6 @@ let extensionAssetsLoading = false;
     document.getElementById("exportAnnualPdf")
       .addEventListener("click", () => exportReportPdf("annual"));
 
-    document.getElementById("copyMonthlyNumbers")
-      .addEventListener("click", () => copyReportNumbers("monthlyReportNumbers"));
-
-    document.getElementById("copyAnnualNumbers")
-      .addEventListener("click", () => copyReportNumbers("annualReportNumbers"));
-
-    ["monthlyReportNumbers", "annualReportNumbers"].forEach(id => {
-      const textarea = document.getElementById(id);
-      if (textarea) textarea.addEventListener("focus", () => textarea.select());
-    });
     tabButtons.forEach(tab => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
@@ -4464,12 +4449,8 @@ if (isOverdue) {
             const value = getReportValues(mainIndex, itemId, branch.id, category.id, isExtension);
             totalCount += value.count;
             totalPoints += value.points;
-            const countCell = document.createElement("td");
-            countCell.textContent = value.count;
-            tr.appendChild(countCell);
-            const pointsCell = document.createElement("td");
-            pointsCell.textContent = value.points;
-            tr.appendChild(pointsCell);
+            tr.appendChild(createReportNumberCell(value.count));
+            tr.appendChild(createReportNumberCell(value.points));
 
             const cumulative = getReportValues(cumulativeIndex, itemId, branch.id, category.id, isExtension);
             cumulativeCount += cumulative.count;
@@ -4638,6 +4619,17 @@ if (isOverdue) {
 
   // Excel貼り付け向け集計表：サンプルシートと同じく、対象者区分を横方向に配置
   // 左2列は「福祉用具」「拠点／延長」、区分別の件数・貸出点数は合計欄の手前に並べる。
+  // 数字を入力欄風に表示する。input要素ではなくspanにすることで、
+  // 表の複数セルをまたいだドラッグ選択・コピーを可能にする。
+  function createReportNumberCell(value) {
+    const td = document.createElement("td");
+    const box = document.createElement("span");
+    box.className = "report-number-box";
+    box.textContent = String(Number(value) || 0);
+    td.appendChild(box);
+    return td;
+  }
+
   function renderExcelReportTable(tableId, data, type) {
     const oldTable = document.getElementById(tableId);
     if (!oldTable) return;
@@ -4764,15 +4756,11 @@ if (isOverdue) {
           });
 
           [totalCount, totalPoints].forEach(value => {
-            const td = document.createElement("td");
-            td.textContent = value;
-            tr.appendChild(td);
+            tr.appendChild(createReportNumberCell(value));
           });
           if (isMonthly) {
             [cumulativeCount, cumulativePoints].forEach(value => {
-              const td = document.createElement("td");
-              td.textContent = value;
-              tr.appendChild(td);
+              tr.appendChild(createReportNumberCell(value));
             });
           }
           tbody.appendChild(tr);
@@ -4791,64 +4779,100 @@ if (isOverdue) {
     table.appendChild(tbody);
     oldTable.replaceWith(table);
 
-    // 表の更新と同時に、Excel貼り付け用の数値データも更新する。
-    const numbersId = isMonthly ? "monthlyReportNumbers" : "annualReportNumbers";
-    const numbersTextarea = document.getElementById(numbersId);
-    if (numbersTextarea) numbersTextarea.value = buildReportNumbersTsv(data, type);
   }
 
-  // Excel貼り付け専用データを生成する。
-  // 対象者区分ごとの「件数」「貸出点数」のみを、1行=1レコードのタブ区切りで返す。
-  // 画面の集計表と同じ順序・拠点絞り込み・合計行構成にする。
+  // Excel報告様式の列見出しを、コピー対象外の説明として表示する。
+  function buildReportColumnGuide(categories) {
+    return "列の順番：" + categories.map(category =>
+      category.name + "（件数・貸出点数）"
+    ).join(" ／ ") + "。右側の数値はこの順番で並んでいます。";
+  }
+
+  // 数値の各行に対応する物品名・拠点名・貸出／延長の内容を別欄に表示する。
+  // このラベル欄は確認用であり、コピー対象の数値TSVには含めない。
+  function buildReportRowLabels(data) {
+    const branches = Array.isArray(data.branches) ? data.branches : [];
+    const items = Array.isArray(data.items) ? data.items : [];
+    const rows = [];
+
+    items.forEach(item => {
+      branches.forEach(branch => {
+        rows.push(item.name + "｜" + branch.name + "｜貸出");
+        rows.push(item.name + "｜" + branch.name + "｜延長");
+      });
+      rows.push(item.name + "｜合計");
+      rows.push(item.name + "｜延長合計");
+    });
+
+    branches.forEach(branch => {
+      rows.push("全物品合計｜" + branch.name + "｜貸出");
+      rows.push("全物品合計｜" + branch.name + "｜延長");
+    });
+    rows.push("全物品合計｜合計");
+    rows.push("全物品合計｜延長合計");
+    rows.push("全物品合計｜総合計");
+
+    return rows.join("\n");
+  }
+
+  // Excel報告様式の数値欄（C:P）だけを生成する。
+  // 1行につき対象者区分7区分×「件数・貸出点数」の14列を出力する。
+  // 拠点の絞り込み表示とは切り離し、Excel様式どおり全拠点分を固定順で出力する。
+  // 物品ごと：拠点×貸出/延長 + 合計/延長合計（計16行）
+  // 全物品：拠点×貸出/延長 + 合計/延長合計/総合計（計17行）
   function buildReportNumbersTsv(data, type) {
     const isMonthly = type === "monthly";
-    const allBranches = Array.isArray(data.branches) ? data.branches : [];
+    const branches = Array.isArray(data.branches) ? data.branches : [];
     const items = Array.isArray(data.items) ? data.items : [];
     const categories = Array.isArray(data.categories) ? data.categories : [];
-    const selectedBranchId = isMonthly
-      ? (document.getElementById("monthlyReportBranchFilter")?.value || "")
-      : "";
-    const branches = selectedBranchId
-      ? allBranches.filter(branch => branch.id === selectedBranchId)
-      : allBranches;
     const mainIndex = buildReportIndex(
       isMonthly ? (data.monthly || []) : (data.annual || [])
     );
     const rows = [];
 
-    function appendGroup(itemId, branchEntries, includeItemTotal) {
-      const entries = branchEntries.slice();
-      if (includeItemTotal) entries.push({ name: "合計", id: null, isTotal: true });
+    // 指定した物品・拠点・区分の数値を1行分作成する。
+    // mode: loan=貸出、extension=延長、total=貸出+延長
+    function makeNumericRow(itemId, branchId, mode) {
+      const row = [];
+      categories.forEach(category => {
+        const loan = getReportValues(mainIndex, itemId, branchId, category.id, false);
+        const extension = getReportValues(mainIndex, itemId, branchId, category.id, true);
+        const values = mode === "extension"
+          ? extension
+          : mode === "total"
+            ? {
+                count: loan.count + extension.count,
+                points: loan.points + extension.points
+              }
+            : loan;
 
-      entries.forEach(branch => {
-        [false, true].forEach(isExtension => {
-          const row = [];
-          categories.forEach(category => {
-            const value = getReportValues(
-              mainIndex, itemId, branch.id, category.id, isExtension
-            );
-            row.push(String(value.count));
-            row.push(String(value.points));
-          });
-          rows.push(row.join("\t"));
-        });
+        // 0も文字列の"0"として出力し、14列の位置を必ず維持する。
+        row.push(String(Number(values.count) || 0));
+        row.push(String(Number(values.points) || 0));
       });
+      rows.push(row.join("\t"));
     }
 
-    // 物品ごとの拠点別行と物品小計
-    items.forEach(item => appendGroup(item.id, branches, true));
+    // 物品ごとに、全拠点の貸出・延長行と物品小計2行を出力。
+    items.forEach(item => {
+      branches.forEach(branch => {
+        makeNumericRow(item.id, branch.id, "loan");
+        makeNumericRow(item.id, branch.id, "extension");
+      });
+      makeNumericRow(item.id, null, "loan");
+      makeNumericRow(item.id, null, "extension");
+    });
 
-    // 全物品の合計行
-    if (selectedBranchId && branches[0]) {
-      appendGroup(null, [
-        { name: branches[0].name + "合計", id: branches[0].id, isTotal: true }
-      ], false);
-    } else {
-      appendGroup(null, [
-        ...branches,
-        { name: "総合計", id: null, isTotal: true }
-      ], false);
-    }
+    // 最終の「合計」ブロック。全拠点の貸出・延長行を出力。
+    branches.forEach(branch => {
+      makeNumericRow(null, branch.id, "loan");
+      makeNumericRow(null, branch.id, "extension");
+    });
+
+    // 全物品の貸出合計、延長合計、総合計。
+    makeNumericRow(null, null, "loan");
+    makeNumericRow(null, null, "extension");
+    makeNumericRow(null, null, "total");
 
     return rows.join("\n");
   }
