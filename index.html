@@ -10,14 +10,14 @@
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
 
   <style>
-    :root {
+    :root {A
       --brand: #285777;
       --brand-dark: #1d405a;
       --accent: #3b8190;
       --bg: #f5f7f9;
       --surface: #fff;
       --border: #e2e8ee;
-      --text: #263746;
+      --text: #263746;A
       --muted: #718096;
       --success: #26734d;
       --danger: #b33d3d;
@@ -2207,6 +2207,60 @@ let extensionAssetsLoading = false;
   }
 
   // =====================================
+  // 年度選択の自動設定（4月1日切替）
+  // =====================================
+
+  // このシステムで年度選択肢を用意する最初の年度
+  const FIRST_FISCAL_YEAR = 2026;
+
+  // 日本時間（JST）を基準に当年度を判定する
+  function getCurrentFiscalYearJST(date = new Date()) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "numeric"
+    }).formatToParts(date);
+
+    const year = Number(
+      parts.find(part => part.type === "year").value
+    );
+    const month = Number(
+      parts.find(part => part.type === "month").value
+    );
+
+    // 4月1日から新年度。それ以前は前年の年度。
+    return month >= 4 ? year : year - 1;
+  }
+
+  // 月別集計・年度集計の年度候補を同じ内容で生成する
+  function initializeFiscalYearSelectors() {
+    const currentFiscalYear = getCurrentFiscalYearJST();
+
+    // 既存画面で設定されている2026年度を起点に、当年度までを表示する。
+    // 起点より前の年度にいる場合は、当年度だけを選択肢として表示する。
+    const firstYear = Math.min(FIRST_FISCAL_YEAR, currentFiscalYear);
+    const selectIds = ["monthlyReportYear", "annualReportYear"];
+
+    selectIds.forEach(id => {
+      const select = document.getElementById(id);
+      if (!select) return;
+
+      select.replaceChildren();
+
+      for (let year = currentFiscalYear; year >= firstYear; year--) {
+        const option = document.createElement("option");
+        option.value = String(year);
+        option.textContent = `令和${year - 2018}年度（${year}年度）`;
+        select.appendChild(option);
+      }
+
+      // 起動時は必ず当年度を初期選択する。以後の手動変更は妨げない。
+      select.value = String(currentFiscalYear);
+    });
+  }
+
+
+  // =====================================
   // 初期化
   // =====================================
 
@@ -2215,6 +2269,9 @@ let extensionAssetsLoading = false;
     if (window.lucide) {
       lucide.createIcons();
     }
+
+    // 月別集計・年度集計の年度を当年度に自動設定
+    initializeFiscalYearSelectors();
 
     // 要望フォーム
     const requestModal = document.getElementById("requestModal");
