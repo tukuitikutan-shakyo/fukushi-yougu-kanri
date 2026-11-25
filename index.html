@@ -1887,7 +1887,7 @@
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
         各対象者区分の「件数」「貸出点数」を横並びで表示します。
-        Excelへ貼り付ける場合は、「件数」「貸出点数」の列を合計欄の手前まで選択し、Ctrl+Cでコピーしてください。
+        Excelに貼り付ける場合は、下の「数値のみ」欄をコピーしてください。区分別の列だけがタブ区切りでコピーされます。
       </p>
 
       <button type="button" class="refresh-button" id="exportMonthlyPdf">
@@ -1909,6 +1909,21 @@
     <tbody><tr><td>集計データを読み込んでください。</td></tr></tbody>
   </table>
 </div>
+
+<div class="excel-copy-panel" style="margin-top:16px; padding:14px; border:1px solid var(--border); border-radius:12px; background:var(--surface);">
+  <label for="monthlyReportNumbers" style="display:block; font-weight:700; margin-bottom:8px;">Excel貼り付け用（数値のみ）</label>
+  <textarea id="monthlyReportNumbers" rows="8" readonly spellcheck="false" wrap="off"
+    placeholder="集計データを読み込むと、区分別の数値がここに表示されます。"
+    style="display:block; width:100%; min-height:150px; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font:13px/1.5 Consolas, 'Courier New', monospace; white-space:pre; overflow:auto; resize:vertical;"></textarea>
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;">
+    <button type="button" class="refresh-button" id="copyMonthlyNumbers">
+      <i data-lucide="copy"></i>
+      数値をコピー
+    </button>
+    <span style="color:var(--muted); font-size:12px;">見出し・物品名・拠点名・右端の合計／年度累計列は含みません。コピー後、Excelの貼り付け先セルでCtrl+V。</span>
+  </div>
+</div>
+
 <div style="display:none" aria-hidden="true">
   <table id="monthlyReportPdfTable"><tbody><tr><td>PDF出力用</td></tr></tbody></table>
 </div>
@@ -1947,7 +1962,7 @@
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
         各対象者区分の「件数」「貸出点数」を横並びで表示します。
-        Excelへ貼り付ける場合は、「件数」「貸出点数」の列を合計欄の手前まで選択し、Ctrl+Cでコピーしてください。
+        Excelに貼り付ける場合は、下の「数値のみ」欄をコピーしてください。区分別の列だけがタブ区切りでコピーされます。
       </p>
       <button type="button" class="refresh-button" id="exportAnnualPdf">
         <i data-lucide="file-down"></i>
@@ -1968,6 +1983,21 @@
     <tbody><tr><td>集計データを読み込んでください。</td></tr></tbody>
   </table>
 </div>
+
+<div class="excel-copy-panel" style="margin-top:16px; padding:14px; border:1px solid var(--border); border-radius:12px; background:var(--surface);">
+  <label for="annualReportNumbers" style="display:block; font-weight:700; margin-bottom:8px;">Excel貼り付け用（数値のみ）</label>
+  <textarea id="annualReportNumbers" rows="8" readonly spellcheck="false" wrap="off"
+    placeholder="集計データを読み込むと、区分別の数値がここに表示されます。"
+    style="display:block; width:100%; min-height:150px; box-sizing:border-box; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font:13px/1.5 Consolas, 'Courier New', monospace; white-space:pre; overflow:auto; resize:vertical;"></textarea>
+  <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:10px;">
+    <button type="button" class="refresh-button" id="copyAnnualNumbers">
+      <i data-lucide="copy"></i>
+      数値をコピー
+    </button>
+    <span style="color:var(--muted); font-size:12px;">見出し・物品名・拠点名・右端の合計／年度累計列は含みません。コピー後、Excelの貼り付け先セルでCtrl+V。</span>
+  </div>
+</div>
+
 <div style="display:none" aria-hidden="true">
   <table id="annualReportPdfTable"><tbody><tr><td>PDF出力用</td></tr></tbody></table>
 </div>
@@ -2406,6 +2436,17 @@ let extensionAssetsLoading = false;
 
     document.getElementById("exportAnnualPdf")
       .addEventListener("click", () => exportReportPdf("annual"));
+
+    document.getElementById("copyMonthlyNumbers")
+      .addEventListener("click", () => copyReportNumbers("monthlyReportNumbers"));
+
+    document.getElementById("copyAnnualNumbers")
+      .addEventListener("click", () => copyReportNumbers("annualReportNumbers"));
+
+    ["monthlyReportNumbers", "annualReportNumbers"].forEach(id => {
+      const textarea = document.getElementById(id);
+      if (textarea) textarea.addEventListener("focus", () => textarea.select());
+    });
     tabButtons.forEach(tab => {
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
@@ -4749,6 +4790,93 @@ if (isOverdue) {
 
     table.appendChild(tbody);
     oldTable.replaceWith(table);
+
+    // 表の更新と同時に、Excel貼り付け用の数値データも更新する。
+    const numbersId = isMonthly ? "monthlyReportNumbers" : "annualReportNumbers";
+    const numbersTextarea = document.getElementById(numbersId);
+    if (numbersTextarea) numbersTextarea.value = buildReportNumbersTsv(data, type);
+  }
+
+  // Excel貼り付け専用データを生成する。
+  // 対象者区分ごとの「件数」「貸出点数」のみを、1行=1レコードのタブ区切りで返す。
+  // 画面の集計表と同じ順序・拠点絞り込み・合計行構成にする。
+  function buildReportNumbersTsv(data, type) {
+    const isMonthly = type === "monthly";
+    const allBranches = Array.isArray(data.branches) ? data.branches : [];
+    const items = Array.isArray(data.items) ? data.items : [];
+    const categories = Array.isArray(data.categories) ? data.categories : [];
+    const selectedBranchId = isMonthly
+      ? (document.getElementById("monthlyReportBranchFilter")?.value || "")
+      : "";
+    const branches = selectedBranchId
+      ? allBranches.filter(branch => branch.id === selectedBranchId)
+      : allBranches;
+    const mainIndex = buildReportIndex(
+      isMonthly ? (data.monthly || []) : (data.annual || [])
+    );
+    const rows = [];
+
+    function appendGroup(itemId, branchEntries, includeItemTotal) {
+      const entries = branchEntries.slice();
+      if (includeItemTotal) entries.push({ name: "合計", id: null, isTotal: true });
+
+      entries.forEach(branch => {
+        [false, true].forEach(isExtension => {
+          const row = [];
+          categories.forEach(category => {
+            const value = getReportValues(
+              mainIndex, itemId, branch.id, category.id, isExtension
+            );
+            row.push(String(value.count));
+            row.push(String(value.points));
+          });
+          rows.push(row.join("\t"));
+        });
+      });
+    }
+
+    // 物品ごとの拠点別行と物品小計
+    items.forEach(item => appendGroup(item.id, branches, true));
+
+    // 全物品の合計行
+    if (selectedBranchId && branches[0]) {
+      appendGroup(null, [
+        { name: branches[0].name + "合計", id: branches[0].id, isTotal: true }
+      ], false);
+    } else {
+      appendGroup(null, [
+        ...branches,
+        { name: "総合計", id: null, isTotal: true }
+      ], false);
+    }
+
+    return rows.join("\n");
+  }
+
+  // 数値テキストボックスの内容をクリップボードへコピーする。
+  // Clipboard APIが利用できない環境では、選択＋execCommandへフォールバックする。
+  async function copyReportNumbers(textareaId) {
+    const textarea = document.getElementById(textareaId);
+    if (!textarea || !textarea.value.trim()) {
+      showToast("先に集計表を読み込んでください。");
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textarea.value);
+      } else {
+        textarea.focus();
+        textarea.select();
+        const copied = document.execCommand("copy");
+        if (!copied) throw new Error("copy command failed");
+      }
+      showToast("数値をコピーしました。Excelに貼り付けてください。");
+    } catch (error) {
+      textarea.focus();
+      textarea.select();
+      showToast("コピーできませんでした。選択された内容をCtrl+Cでコピーしてください。");
+    }
   }
 
   // =====================================
