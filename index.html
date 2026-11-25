@@ -10,14 +10,14 @@
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
 
   <style>
-    :root {A
+    :root {
       --brand: #285777;
       --brand-dark: #1d405a;
       --accent: #3b8190;
       --bg: #f5f7f9;
       --surface: #fff;
       --border: #e2e8ee;
-      --text: #263746;A
+      --text: #263746;
       --muted: #718096;
       --success: #26734d;
       --danger: #b33d3d;
@@ -1886,14 +1886,10 @@
 
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
-        貸出件数・貸出点数・延長件数・延長点数を表示します。
-        表をコピーしてExcel等に貼り付けできます。
+        各対象者区分の「件数」「貸出点数」を横並びで表示します。
+        Excelへ貼り付ける場合は、「件数」「貸出点数」の列を合計欄の手前まで選択し、Ctrl+Cでコピーしてください。
       </p>
 
-      <button type="button" class="refresh-button" id="copyMonthlyReport">
-        <i data-lucide="copy"></i>
-        集計表をコピー
-      </button>
       <button type="button" class="refresh-button" id="exportMonthlyPdf">
         <i data-lucide="file-down"></i>
         PDFで保存
@@ -1910,13 +1906,12 @@
 
 <div class="table-wrap" style="margin-top:8px;">
   <table class="inventory-table" id="monthlyReportTable">
-          <tbody>
-            <tr>
-              <td>集計データを読み込んでください。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <tbody><tr><td>集計データを読み込んでください。</td></tr></tbody>
+  </table>
+</div>
+<div style="display:none" aria-hidden="true">
+  <table id="monthlyReportPdfTable"><tbody><tr><td>PDF出力用</td></tr></tbody></table>
+</div>
     </div>
   </section>
 
@@ -1950,10 +1945,10 @@
     </div>
 
     <div class="panel" style="padding:16px;">
-      <button type="button" class="refresh-button" id="copyAnnualReport">
-        <i data-lucide="copy"></i>
-        集計表をコピー
-      </button>
+      <p style="color:var(--muted); margin-top:0;">
+        各対象者区分の「件数」「貸出点数」を横並びで表示します。
+        Excelへ貼り付ける場合は、「件数」「貸出点数」の列を合計欄の手前まで選択し、Ctrl+Cでコピーしてください。
+      </p>
       <button type="button" class="refresh-button" id="exportAnnualPdf">
         <i data-lucide="file-down"></i>
         PDFで保存
@@ -1970,13 +1965,12 @@
 
 <div class="table-wrap" style="margin-top:8px;">
   <table class="inventory-table" id="annualReportTable">
-          <tbody>
-            <tr>
-              <td>集計データを読み込んでください。</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <tbody><tr><td>集計データを読み込んでください。</td></tr></tbody>
+  </table>
+</div>
+<div style="display:none" aria-hidden="true">
+  <table id="annualReportPdfTable"><tbody><tr><td>PDF出力用</td></tr></tbody></table>
+</div>
     </div>
   </section>
   <div class="footer" id="footer">
@@ -2399,18 +2393,14 @@ let extensionAssetsLoading = false;
     document.getElementById("monthlyReportBranchFilter")
       .addEventListener("change", () => {
         if (monthlyReportData) {
-          renderReportTable("monthlyReportTable", monthlyReportData, "monthly");
+          renderExcelReportTable("monthlyReportTable", monthlyReportData, "monthly");
+          renderReportTable("monthlyReportPdfTable", monthlyReportData, "monthly");
         }
       });
 
     document.getElementById("loadAnnualReport")
       .addEventListener("click", () => loadReportData("annual"));
 
-    document.getElementById("copyMonthlyReport")
-      .addEventListener("click", () => copyReportTable("monthlyReportTable"));
-
-    document.getElementById("copyAnnualReport")
-      .addEventListener("click", () => copyReportTable("annualReportTable"));
     document.getElementById("exportMonthlyPdf")
       .addEventListener("click", () => exportReportPdf("monthly"));
 
@@ -4250,18 +4240,12 @@ if (isOverdue) {
         if (isMonthly) {
           monthlyReportData = data;
           populateMonthlyBranchFilter(data.branches || []);
-          renderReportTable(
-            "monthlyReportTable",
-            data,
-            "monthly"
-          );
+          renderExcelReportTable("monthlyReportTable", data, "monthly");
+          renderReportTable("monthlyReportPdfTable", data, "monthly");
         } else {
           annualReportData = data;
-          renderReportTable(
-            "annualReportTable",
-            data,
-            "annual"
-          );
+          renderExcelReportTable("annualReportTable", data, "annual");
+          renderReportTable("annualReportPdfTable", data, "annual");
         }
 
         statusElement.textContent =
@@ -4611,6 +4595,162 @@ if (isOverdue) {
     oldTable.replaceWith(table);
   }
 
+  // Excel貼り付け向け集計表：サンプルシートと同じく、対象者区分を横方向に配置
+  // 左2列は「福祉用具」「拠点／延長」、区分別の件数・貸出点数は合計欄の手前に並べる。
+  function renderExcelReportTable(tableId, data, type) {
+    const oldTable = document.getElementById(tableId);
+    if (!oldTable) return;
+
+    const isMonthly = type === "monthly";
+    const allBranches = Array.isArray(data.branches) ? data.branches : [];
+    const items = Array.isArray(data.items) ? data.items : [];
+    const categories = Array.isArray(data.categories) ? data.categories : [];
+    const selectedBranchId = isMonthly
+      ? (document.getElementById("monthlyReportBranchFilter")?.value || "")
+      : "";
+    const branches = selectedBranchId
+      ? allBranches.filter(branch => branch.id === selectedBranchId)
+      : allBranches;
+    const mainIndex = buildReportIndex(
+      isMonthly ? (data.monthly || []) : (data.annual || [])
+    );
+    const cumulativeIndex = isMonthly ? buildReportIndex(data.cumulative || []) : null;
+
+    const table = document.createElement("table");
+    table.id = tableId;
+    table.className = "inventory-table";
+    table.style.minWidth = "1800px";
+
+    const caption = document.createElement("caption");
+    caption.textContent = "令和" + (data.fiscalYear - 2018) + "年度 福祉用具無料貸出事業" +
+      (isMonthly ? " " + data.month + "月分" : " 年度集計");
+    caption.style.padding = "12px";
+    caption.style.fontWeight = "700";
+    caption.style.textAlign = "left";
+    table.appendChild(caption);
+
+    const thead = document.createElement("thead");
+    const topRow = document.createElement("tr");
+    ["福祉用具", "拠点／区分"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      th.rowSpan = 2;
+      topRow.appendChild(th);
+    });
+    categories.forEach(category => {
+      const th = document.createElement("th");
+      th.colSpan = 2;
+      th.textContent = category.name;
+      topRow.appendChild(th);
+    });
+    const totalHead = document.createElement("th");
+    totalHead.colSpan = 2;
+    totalHead.textContent = "合計";
+    topRow.appendChild(totalHead);
+    if (isMonthly) {
+      const cumulativeHead = document.createElement("th");
+      cumulativeHead.colSpan = 2;
+      cumulativeHead.textContent = "年度累計";
+      topRow.appendChild(cumulativeHead);
+    }
+    thead.appendChild(topRow);
+
+    const subRow = document.createElement("tr");
+    for (let i = 0; i < categories.length + 1 + (isMonthly ? 1 : 0); i++) {
+      ["件数", "貸出点数"].forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        subRow.appendChild(th);
+      });
+    }
+    thead.appendChild(subRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    function appendGroup(itemName, itemId, branchEntries, includeItemTotal) {
+      const entries = branchEntries.slice();
+      if (includeItemTotal) entries.push({ name: "合計", id: null, isTotal: true });
+      if (!entries.length) return;
+      const groupRows = entries.length * 2;
+
+      entries.forEach((branch, branchIndex) => {
+        [false, true].forEach((isExtension, kindIndex) => {
+          const tr = document.createElement("tr");
+          const isTotal = !!branch.isTotal || /合計/.test(branch.name || "");
+          if (isExtension) tr.style.background = "#fafbfd";
+          if (isTotal) {
+            tr.style.fontWeight = "700";
+            tr.style.background = "#eef3f7";
+          }
+
+          if (branchIndex === 0 && kindIndex === 0) {
+            const itemCell = document.createElement("td");
+            itemCell.textContent = itemName;
+            itemCell.rowSpan = groupRows;
+            itemCell.className = "report-group-cell";
+            tr.appendChild(itemCell);
+          }
+
+          const branchCell = document.createElement("td");
+          branchCell.textContent = isExtension
+            ? (branch.name === "合計" ? "延長合計" : branch.name === "総合計" ? "延長総合計" : "延長")
+            : branch.name;
+          branchCell.className = "report-group-cell";
+          tr.appendChild(branchCell);
+
+          let totalCount = 0;
+          let totalPoints = 0;
+          let cumulativeCount = 0;
+          let cumulativePoints = 0;
+
+          categories.forEach(category => {
+            const value = getReportValues(mainIndex, itemId, branch.id, category.id, isExtension);
+            totalCount += value.count;
+            totalPoints += value.points;
+            const countCell = document.createElement("td");
+            countCell.textContent = value.count;
+            tr.appendChild(countCell);
+            const pointsCell = document.createElement("td");
+            pointsCell.textContent = value.points;
+            tr.appendChild(pointsCell);
+
+            if (isMonthly) {
+              const cumulative = getReportValues(cumulativeIndex, itemId, branch.id, category.id, isExtension);
+              cumulativeCount += cumulative.count;
+              cumulativePoints += cumulative.points;
+            }
+          });
+
+          [totalCount, totalPoints].forEach(value => {
+            const td = document.createElement("td");
+            td.textContent = value;
+            tr.appendChild(td);
+          });
+          if (isMonthly) {
+            [cumulativeCount, cumulativePoints].forEach(value => {
+              const td = document.createElement("td");
+              td.textContent = value;
+              tr.appendChild(td);
+            });
+          }
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    items.forEach(item => appendGroup(item.name, item.id, branches, true));
+
+    if (selectedBranchId && branches[0]) {
+      appendGroup("合計", null, [{ name: branches[0].name + "合計", id: branches[0].id, isTotal: true }], false);
+    } else {
+      appendGroup("合計", null, [...branches, { name: "総合計", id: null, isTotal: true }], false);
+    }
+
+    table.appendChild(tbody);
+    oldTable.replaceWith(table);
+  }
+
   // =====================================
   // 集計表の描画
   // =====================================
@@ -4910,7 +5050,7 @@ if (isOverdue) {
   // 見本に合わせ、物品名を縦にまとめ、拠点行の次に「延長」を表示する。
   function exportReportPdf(type) {
     const isMonthly = type === "monthly";
-    const tableId = isMonthly ? "monthlyReportTable" : "annualReportTable";
+    const tableId = isMonthly ? "monthlyReportPdfTable" : "annualReportPdfTable";
     const table = document.getElementById(tableId);
     const reportData = isMonthly ? monthlyReportData : annualReportData;
 
@@ -5163,42 +5303,6 @@ ${sheetsHtml}
     printWindow.document.close();
   }
 
-  // 集計表をタブ区切りでコピー
-  function copyReportTable(tableId) {
-    const table = document.getElementById(tableId);
-
-    if (!table) {
-      showToast("集計表がありません。");
-      return;
-    }
-
-    const rows = Array.from(table.querySelectorAll("tr"));
-    const grid = [];
-
-    rows.forEach((row, rowIndex) => {
-      grid[rowIndex] = grid[rowIndex] || [];
-      let columnIndex = 0;
-      Array.from(row.querySelectorAll("th, td")).forEach(cell => {
-        while (grid[rowIndex][columnIndex] !== undefined) columnIndex++;
-        const value = cell.innerText.replace(/\t|\n/g, " ");
-        const rowSpan = cell.rowSpan || 1;
-        const colSpan = cell.colSpan || 1;
-        for (let r = rowIndex; r < rowIndex + rowSpan; r++) {
-          grid[r] = grid[r] || [];
-          for (let c = columnIndex; c < columnIndex + colSpan; c++) {
-            grid[r][c] = value;
-          }
-        }
-        columnIndex += colSpan;
-      });
-    });
-
-    const text = grid.map(row => row.map(cell => cell ?? "").join("\t")).join("\n");
-
-    navigator.clipboard.writeText(text)
-      .then(() => showToast("集計表をコピーしました。"))
-      .catch(() => showToast("コピーできませんでした。"));
-  }
   function showError(message) {
 
     const status = document.getElementById("status");
