@@ -4848,7 +4848,13 @@ if (isOverdue) {
     function appendGroup(itemName, itemId, branchEntries, includeItemTotal) {
       const entries = branchEntries.slice();
       if (includeItemTotal) {
-        entries.push({ name: "合計", id: null, isTotal: true });
+        // 拠点を絞り込んでいる場合、合計も表示対象の拠点だけを集計する。
+        // 全拠点表示の場合のみ branchId=null として全拠点分を集計する。
+        entries.push({
+          name: "合計",
+          id: selectedBranchId && selectedBranch ? selectedBranch.id : null,
+          isTotal: true
+        });
       }
       if (!entries.length) return;
 
