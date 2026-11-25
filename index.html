@@ -2017,7 +2017,7 @@
 
     <div class="section-heading">
       <h2>月別集計表</h2>
-      <span>全拠点・全対象者区分</span>
+      <span id="monthlyReportScopeLabel">全拠点・全対象者区分</span>
     </div>
 
     <div class="panel" style="padding:16px;">
@@ -2069,6 +2069,16 @@
         </div>
       </div>
 
+      <div class="field">
+        <label for="annualReportBranchFilter">表示拠点</label>
+        <div class="select-wrap">
+          <select id="annualReportBranchFilter">
+            <option value="">全拠点</option>
+          </select>
+          <i data-lucide="chevron-down"></i>
+        </div>
+      </div>
+
       <button type="button" class="refresh-button" id="loadAnnualReport">
         <i data-lucide="refresh-cw"></i>
         更新
@@ -2077,7 +2087,7 @@
 
     <div class="section-heading">
       <h2>年度集計表</h2>
-      <span>全拠点・全対象者区分</span>
+      <span id="annualReportScopeLabel">全拠点・全対象者区分</span>
     </div>
 
     <div class="panel" style="padding:16px;">
@@ -2532,6 +2542,16 @@ let extensionAssetsLoading = false;
           renderExcelReportTable("monthlyReportTable", monthlyReportData, "monthly");
           renderReportTable("monthlyReportPdfTable", monthlyReportData, "monthly");
         }
+        updateReportScopeLabel("monthly");
+      });
+
+    document.getElementById("annualReportBranchFilter")
+      .addEventListener("change", () => {
+        if (annualReportData) {
+          renderExcelReportTable("annualReportTable", annualReportData, "annual");
+          renderReportTable("annualReportPdfTable", annualReportData, "annual");
+        }
+        updateReportScopeLabel("annual");
       });
 
     document.getElementById("loadAnnualReport")
@@ -2547,11 +2567,27 @@ let extensionAssetsLoading = false;
       tab.addEventListener("click", () => {
         const target = tab.dataset.tabTarget;
         if (target === "monthlyReport") {
+          // ページに入った時点では全拠点を表示。選択後は画面側で選択拠点だけに絞る。
           const monthlyBranchFilter = document.getElementById("monthlyReportBranchFilter");
           if (monthlyBranchFilter) monthlyBranchFilter.value = "";
+          updateReportScopeLabel("monthly");
           if (monthlyReportData) {
             renderExcelReportTable("monthlyReportTable", monthlyReportData, "monthly");
             renderReportTable("monthlyReportPdfTable", monthlyReportData, "monthly");
+          } else {
+            loadReportData("monthly");
+          }
+        }
+        if (target === "annualReport") {
+          // 年度集計もページに入った時点では全拠点を表示する。
+          const annualBranchFilter = document.getElementById("annualReportBranchFilter");
+          if (annualBranchFilter) annualBranchFilter.value = "";
+          updateReportScopeLabel("annual");
+          if (annualReportData) {
+            renderExcelReportTable("annualReportTable", annualReportData, "annual");
+            renderReportTable("annualReportPdfTable", annualReportData, "annual");
+          } else {
+            loadReportData("annual");
           }
         }
         if (target === "timeline") loadLoanTimeline(currentBranchId);
@@ -4382,9 +4418,13 @@ if (isOverdue) {
           return;
         }
 
+        // APIからは常に全拠点分を取得し、拠点の絞り込みは画面側で行う。
+        // 更新時は、まだ存在する選択拠点を維持する。
+        populateReportBranchFilters(data.branches || []);
+        updateReportScopeLabel(isMonthly ? "monthly" : "annual");
+
         if (isMonthly) {
           monthlyReportData = data;
-          populateMonthlyBranchFilter(data.branches || []);
           renderExcelReportTable("monthlyReportTable", data, "monthly");
           renderReportTable("monthlyReportPdfTable", data, "monthly");
         } else {
@@ -4437,25 +4477,45 @@ if (isOverdue) {
       : { count: record.loanCount || 0, points: record.loanPoints || 0 };
   }
 
-  function populateMonthlyBranchFilter(branches) {
-    const select = document.getElementById("monthlyReportBranchFilter");
-    if (!select) return;
-    select.replaceChildren();
+  function updateReportScopeLabel(type) {
+    const isMonthly = type === "monthly";
+    const selectId = isMonthly ? "monthlyReportBranchFilter" : "annualReportBranchFilter";
+    const labelId = isMonthly ? "monthlyReportScopeLabel" : "annualReportScopeLabel";
+    const select = document.getElementById(selectId);
+    const label = document.getElementById(labelId);
+    if (!select || !label) return;
 
-    const allOption = document.createElement("option");
-    allOption.value = "";
-    allOption.textContent = "全拠点";
-    select.appendChild(allOption);
+    const selectedOption = select.options[select.selectedIndex];
+    const branchName = select.value && selectedOption
+      ? selectedOption.textContent
+      : "全拠点";
+    label.textContent = branchName + "・全対象者区分";
+  }
 
-    branches.forEach(branch => {
-      const option = document.createElement("option");
-      option.value = branch.id;
-      option.textContent = branch.name;
-      select.appendChild(option);
+  function populateReportBranchFilters(branches) {
+    ["monthlyReportBranchFilter", "annualReportBranchFilter"].forEach(selectId => {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+
+      // 更新時は現在の選択を保持し、存在しなくなった場合だけ全拠点へ戻す。
+      const previousValue = select.value;
+      select.replaceChildren();
+
+      const allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = "全拠点";
+      select.appendChild(allOption);
+
+      branches.forEach(branch => {
+        const option = document.createElement("option");
+        option.value = String(branch.id ?? "");
+        option.textContent = branch.name || "名称未設定";
+        select.appendChild(option);
+      });
+
+      const exists = branches.some(branch => String(branch.id ?? "") === previousValue);
+      select.value = previousValue && exists ? previousValue : "";
     });
-
-    // 集計データの再取得時も必ず「全拠点」を初期選択にする。
-    select.value = "";
   }
 
   // 月別集計：拠点で絞り込み、物品名・拠点名はグループ内で一度だけ表示
@@ -4466,7 +4526,7 @@ if (isOverdue) {
     const categories = Array.isArray(data.categories) ? data.categories : [];
     const selectedBranchId = document.getElementById("monthlyReportBranchFilter")?.value || "";
     const displayBranches = selectedBranchId
-      ? allBranches.filter(branch => branch.id === selectedBranchId)
+      ? allBranches.filter(branch => String(branch.id) === String(selectedBranchId))
       : allBranches;
     const selectedBranch = displayBranches[0] || null;
     const mainIndex = buildReportIndex(data.monthly || []);
@@ -4523,7 +4583,12 @@ if (isOverdue) {
 
     function appendGroup(itemName, itemId, branchEntries, includeGroupTotal) {
       const entries = branchEntries.slice();
-      if (includeGroupTotal) entries.push({ name: "合計", id: null });
+      if (includeGroupTotal) {
+        entries.push({
+          name: "合計",
+          id: selectedBranchId && selectedBranch ? selectedBranch.id : null
+        });
+      }
       if (!entries.length) return;
       const groupRowSpan = entries.length * 2;
 
@@ -4592,7 +4657,7 @@ if (isOverdue) {
     }
 
     items.forEach(item => {
-      appendGroup(item.name, item.id, displayBranches, !selectedBranchId);
+      appendGroup(item.name, item.id, displayBranches, true);
     });
 
     if (selectedBranchId && selectedBranch) {
@@ -4613,7 +4678,12 @@ if (isOverdue) {
   // 年度集計：月別と同じグループ表示にし、物品名・拠点名の繰り返しを抑える。
   function renderAnnualCompactReportTable(tableId, data) {
     const oldTable = document.getElementById(tableId);
-    const branches = Array.isArray(data.branches) ? data.branches : [];
+    const allBranches = Array.isArray(data.branches) ? data.branches : [];
+    const selectedBranchId = document.getElementById("annualReportBranchFilter")?.value || "";
+    const branches = selectedBranchId
+      ? allBranches.filter(branch => String(branch.id) === String(selectedBranchId))
+      : allBranches;
+    const selectedBranch = branches[0] || null;
     const items = Array.isArray(data.items) ? data.items : [];
     const categories = Array.isArray(data.categories) ? data.categories : [];
     const annualIndex = buildReportIndex(data.annual || []);
@@ -4665,7 +4735,12 @@ if (isOverdue) {
 
     function appendGroup(itemName, itemId, branchEntries, includeGroupTotal) {
       const entries = branchEntries.slice();
-      if (includeGroupTotal) entries.push({ name: "合計", id: null });
+      if (includeGroupTotal) {
+        entries.push({
+          name: "合計",
+          id: selectedBranchId && selectedBranch ? selectedBranch.id : null
+        });
+      }
       if (!entries.length) return;
       const groupRowSpan = entries.length * 2;
 
@@ -4728,7 +4803,15 @@ if (isOverdue) {
     }
 
     items.forEach(item => appendGroup(item.name, item.id, branches, true));
-    appendGroup("全物品合計", null, [...branches, { name: "総合計", id: null }], false);
+    if (selectedBranchId && selectedBranch) {
+      appendGroup("全物品合計", null, [{
+        name: selectedBranch.name + "合計",
+        id: selectedBranch.id,
+        isTotal: true
+      }], false);
+    } else {
+      appendGroup("全物品合計", null, [...branches, { name: "総合計", id: null }], false);
+    }
 
     table.appendChild(tbody);
     oldTable.replaceWith(table);
@@ -4755,9 +4838,10 @@ if (isOverdue) {
     const allBranches = Array.isArray(data.branches) ? data.branches : [];
     const items = Array.isArray(data.items) ? data.items : [];
     const categories = Array.isArray(data.categories) ? data.categories : [];
-    const selectedBranchId = isMonthly
-      ? (document.getElementById("monthlyReportBranchFilter")?.value || "")
-      : "";
+    const branchFilterId = isMonthly
+      ? "monthlyReportBranchFilter"
+      : "annualReportBranchFilter";
+    const selectedBranchId = document.getElementById(branchFilterId)?.value || "";
     const branches = selectedBranchId
       ? allBranches.filter(branch => String(branch.id) === String(selectedBranchId))
       : allBranches;
@@ -5363,9 +5447,9 @@ if (isOverdue) {
     const month = isMonthly
       ? document.getElementById("monthlyReportMonth").value
       : "";
-    const branchSelect = isMonthly
-      ? document.getElementById("monthlyReportBranchFilter")
-      : null;
+    const branchSelect = document.getElementById(
+      isMonthly ? "monthlyReportBranchFilter" : "annualReportBranchFilter"
+    );
     const branchLabel = branchSelect && branchSelect.value
       ? branchSelect.options[branchSelect.selectedIndex].textContent
       : "全拠点";
