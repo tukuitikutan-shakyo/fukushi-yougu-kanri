@@ -1373,6 +1373,19 @@
     font-weight: 700;
     border-bottom: 1px solid var(--border);
   }
+  .report-total-caption {
+    margin-top: 18px;
+    border-top: 2px solid var(--border);
+    background: #f8fafb;
+  }
+  .report-total-grid {
+    margin-bottom: 12px;
+  }
+  .report-bottom-total-table th,
+  .report-bottom-total-table td {
+    min-width: 74px;
+    width: 74px;
+  }
   .report-split-grid {
     display: grid;
     grid-template-columns: 400px minmax(0, 1fr);
@@ -4771,179 +4784,194 @@ if (isOverdue) {
       (isMonthly ? " " + data.month + "月分" : " 年度集計");
     root.appendChild(caption);
 
-    const grid = document.createElement("div");
-    grid.className = "report-split-grid";
+    // 共通の左側ラベル表を作成する。
+    function createLabelTable() {
+      const table = document.createElement("table");
+      table.className = "inventory-table report-label-table";
+      table.setAttribute("aria-label", "福祉用具・拠点／区分");
+      const cols = document.createElement("colgroup");
+      const itemCol = document.createElement("col");
+      itemCol.className = "report-item-col";
+      const branchCol = document.createElement("col");
+      branchCol.className = "report-branch-col";
+      cols.append(itemCol, branchCol);
+      table.appendChild(cols);
+      const head = document.createElement("thead");
+      const row = document.createElement("tr");
+      ["福祉用具", "拠点／区分"].forEach(label => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        th.rowSpan = 2;
+        row.appendChild(th);
+      });
+      head.appendChild(row);
+      head.appendChild(document.createElement("tr"));
+      table.appendChild(head);
+      table.appendChild(document.createElement("tbody"));
+      return table;
+    }
 
-    const labelPane = document.createElement("div");
-    labelPane.className = "report-label-pane";
-    const labelTable = document.createElement("table");
-    labelTable.className = "inventory-table report-label-table";
-    labelTable.setAttribute("aria-label", "福祉用具・拠点／区分");
-    const labelCols = document.createElement("colgroup");
-    const itemCol = document.createElement("col");
-    itemCol.className = "report-item-col";
-    const branchCol = document.createElement("col");
-    branchCol.className = "report-branch-col";
-    labelCols.append(itemCol, branchCol);
-    labelTable.appendChild(labelCols);
+    function createPaneGrid(labelTable, valuesTable, extraClass) {
+      const grid = document.createElement("div");
+      grid.className = "report-split-grid" + (extraClass ? " " + extraClass : "");
+      const labelPane = document.createElement("div");
+      labelPane.className = "report-label-pane";
+      labelPane.appendChild(labelTable);
+      const valuesPane = document.createElement("div");
+      valuesPane.className = "report-values-pane";
+      valuesPane.appendChild(valuesTable);
+      grid.append(labelPane, valuesPane);
+      return grid;
+    }
 
-    const labelHead = document.createElement("thead");
-    const labelHeadRow = document.createElement("tr");
-    ["福祉用具", "拠点／区分"].forEach(label => {
-      const th = document.createElement("th");
-      th.textContent = label;
-      th.rowSpan = 2;
-      labelHeadRow.appendChild(th);
-    });
-    labelHead.appendChild(labelHeadRow);
-    const labelSubHead = document.createElement("tr");
-    labelHead.appendChild(labelSubHead);
-    labelTable.appendChild(labelHead);
-    const labelBody = document.createElement("tbody");
-    labelTable.appendChild(labelBody);
-    labelPane.appendChild(labelTable);
-
-    const valuesPane = document.createElement("div");
-    valuesPane.className = "report-values-pane";
-    const valuesTable = document.createElement("table");
-    valuesTable.className = "inventory-table report-values-table";
-    valuesTable.setAttribute("aria-label", "対象者区分別の件数・貸出点数・合計");
-    const numericColumnCount = categories.length * 2 + 2 + (isMonthly ? 2 : 0);
-    valuesTable.style.minWidth = (numericColumnCount * 74) + "px";
-
-    const valuesHead = document.createElement("thead");
-    const valuesHeadRow = document.createElement("tr");
+    const mainLabelTable = createLabelTable();
+    const mainLabelBody = mainLabelTable.tBodies[0];
+    const mainValuesTable = document.createElement("table");
+    mainValuesTable.className = "inventory-table report-values-table";
+    mainValuesTable.setAttribute("aria-label", "対象者区分別の件数・貸出点数");
+    mainValuesTable.style.minWidth = (categories.length * 2 * 74) + "px";
+    const mainHead = document.createElement("thead");
+    const mainHeadRow = document.createElement("tr");
     categories.forEach(category => {
       const th = document.createElement("th");
       th.colSpan = 2;
       th.textContent = category.name;
-      valuesHeadRow.appendChild(th);
+      mainHeadRow.appendChild(th);
     });
-    const totalHead = document.createElement("th");
-    totalHead.colSpan = 2;
-    totalHead.textContent = "合計";
-    valuesHeadRow.appendChild(totalHead);
-    if (isMonthly) {
-      const cumulativeHead = document.createElement("th");
-      cumulativeHead.colSpan = 2;
-      cumulativeHead.textContent = "年度累計";
-      valuesHeadRow.appendChild(cumulativeHead);
-    }
-    valuesHead.appendChild(valuesHeadRow);
+    mainHead.appendChild(mainHeadRow);
+    const mainSubHead = document.createElement("tr");
+    categories.forEach(() => ["件数", "貸出点数"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      mainSubHead.appendChild(th);
+    }));
+    mainHead.appendChild(mainSubHead);
+    mainValuesTable.appendChild(mainHead);
+    const mainValuesBody = document.createElement("tbody");
+    mainValuesTable.appendChild(mainValuesBody);
+    root.appendChild(createPaneGrid(mainLabelTable, mainValuesTable));
 
-    const valuesSubHeadRow = document.createElement("tr");
-    for (let i = 0; i < categories.length + 1 + (isMonthly ? 1 : 0); i++) {
+    // 合計・年度累計は、区分別の表から切り離して下段に独立表示する。
+    const totalCaption = document.createElement("div");
+    totalCaption.className = "report-split-caption report-total-caption";
+    totalCaption.textContent = isMonthly ? "合計・年度累計" : "合計";
+    root.appendChild(totalCaption);
+
+    const totalLabelTable = createLabelTable();
+    const totalLabelBody = totalLabelTable.tBodies[0];
+    const totalValuesTable = document.createElement("table");
+    totalValuesTable.className = "inventory-table report-values-table report-bottom-total-table";
+    totalValuesTable.setAttribute("aria-label", "合計・年度累計");
+    const totalColumnCount = isMonthly ? 4 : 2;
+    totalValuesTable.style.minWidth = (totalColumnCount * 74) + "px";
+    const totalHead = document.createElement("thead");
+    const totalHeadRow = document.createElement("tr");
+    ["合計", ...(isMonthly ? ["年度累計"] : [])].forEach(label => {
+      const th = document.createElement("th");
+      th.colSpan = 2;
+      th.textContent = label;
+      totalHeadRow.appendChild(th);
+    });
+    totalHead.appendChild(totalHeadRow);
+    const totalSubHead = document.createElement("tr");
+    for (let i = 0; i < (isMonthly ? 2 : 1); i++) {
       ["件数", "貸出点数"].forEach(label => {
         const th = document.createElement("th");
         th.textContent = label;
-        valuesSubHeadRow.appendChild(th);
+        totalSubHead.appendChild(th);
       });
     }
-    valuesHead.appendChild(valuesSubHeadRow);
-    valuesTable.appendChild(valuesHead);
-    const valuesBody = document.createElement("tbody");
-    valuesTable.appendChild(valuesBody);
-    valuesPane.appendChild(valuesTable);
+    totalHead.appendChild(totalSubHead);
+    totalValuesTable.appendChild(totalHead);
+    const totalValuesBody = document.createElement("tbody");
+    totalValuesTable.appendChild(totalValuesBody);
+    root.appendChild(createPaneGrid(totalLabelTable, totalValuesTable, "report-total-grid"));
 
     function appendGroup(itemName, itemId, branchEntries, includeItemTotal) {
       const entries = branchEntries.slice();
-      if (includeItemTotal) {
-        entries.push({ name: "合計", id: null, isTotal: true });
-      }
+      if (includeItemTotal) entries.push({ name: "合計", id: null, isTotal: true });
       if (!entries.length) return;
       const groupRowCount = entries.length * 2;
 
       entries.forEach((branch, branchIndex) => {
-        [false, true].forEach((isExtension, kindIndex) => {
+        [false, true].forEach(isExtension => {
           const labelRow = document.createElement("tr");
           const valuesRow = document.createElement("tr");
-          labelRow.className = "report-split-data-row";
-          valuesRow.className = "report-split-data-row";
-          if (isExtension) {
-            labelRow.classList.add("report-extension-row");
-            valuesRow.classList.add("report-extension-row");
-          }
-          if (branch.isTotal || /合計/.test(branch.name || "")) {
-            labelRow.classList.add("report-total-row");
-            valuesRow.classList.add("report-total-row");
-          }
+          const totalLabelRow = document.createElement("tr");
+          const totalValuesRow = document.createElement("tr");
+          [labelRow, valuesRow, totalLabelRow, totalValuesRow].forEach(row => {
+            row.className = "report-split-data-row";
+            if (isExtension) row.classList.add("report-extension-row");
+            if (branch.isTotal || /合計/.test(branch.name || "")) row.classList.add("report-total-row");
+          });
 
-          if (branchIndex === 0 && kindIndex === 0) {
+          if (branchIndex === 0 && !isExtension) {
             const itemCell = document.createElement("td");
             itemCell.textContent = itemName;
             itemCell.rowSpan = groupRowCount;
             itemCell.className = "report-group-cell";
             labelRow.appendChild(itemCell);
+            const totalItemCell = itemCell.cloneNode(true);
+            totalLabelRow.appendChild(totalItemCell);
           }
 
-          const branchCell = document.createElement("td");
-          branchCell.textContent = isExtension
+          const branchText = isExtension
             ? (branch.name === "合計" ? "延長合計" : branch.name === "総合計" ? "延長総合計" : "延長")
             : branch.name;
+          const branchCell = document.createElement("td");
+          branchCell.textContent = branchText;
           branchCell.className = "report-group-cell";
           labelRow.appendChild(branchCell);
+          const totalBranchCell = branchCell.cloneNode(true);
+          totalLabelRow.appendChild(totalBranchCell);
 
           let totalCount = 0;
           let totalPoints = 0;
           let cumulativeCount = 0;
           let cumulativePoints = 0;
-
           categories.forEach(category => {
             const value = getReportValues(mainIndex, itemId, branch.id, category.id, isExtension);
-            totalCount += value.count;
-            totalPoints += value.points;
-            const countCell = document.createElement("td");
-            countCell.textContent = String(Number(value.count) || 0);
-            valuesRow.appendChild(countCell);
-            const pointsCell = document.createElement("td");
-            pointsCell.textContent = String(Number(value.points) || 0);
-            valuesRow.appendChild(pointsCell);
-
+            totalCount += Number(value.count) || 0;
+            totalPoints += Number(value.points) || 0;
+            [value.count, value.points].forEach(number => {
+              const cell = document.createElement("td");
+              const numberBox = document.createElement("span");
+              numberBox.className = "report-number-box";
+              numberBox.textContent = String(Number(number) || 0);
+              cell.appendChild(numberBox);
+              valuesRow.appendChild(cell);
+            });
             if (isMonthly) {
-              const cumulative = getReportValues(
-                cumulativeIndex, itemId, branch.id, category.id, isExtension
-              );
-              cumulativeCount += cumulative.count;
-              cumulativePoints += cumulative.points;
+              const cumulative = getReportValues(cumulativeIndex, itemId, branch.id, category.id, isExtension);
+              cumulativeCount += Number(cumulative.count) || 0;
+              cumulativePoints += Number(cumulative.points) || 0;
             }
           });
 
-          [totalCount, totalPoints].forEach(value => {
+          [totalCount, totalPoints, ...(isMonthly ? [cumulativeCount, cumulativePoints] : [])].forEach(number => {
             const cell = document.createElement("td");
-            cell.textContent = String(Number(value) || 0);
-            valuesRow.appendChild(cell);
+            const numberBox = document.createElement("span");
+            numberBox.className = "report-number-box";
+            numberBox.textContent = String(Number(number) || 0);
+            cell.appendChild(numberBox);
+            totalValuesRow.appendChild(cell);
           });
-          if (isMonthly) {
-            [cumulativeCount, cumulativePoints].forEach(value => {
-              const cell = document.createElement("td");
-              cell.textContent = String(Number(value) || 0);
-              valuesRow.appendChild(cell);
-            });
-          }
 
-          labelBody.appendChild(labelRow);
-          valuesBody.appendChild(valuesRow);
+          mainLabelBody.appendChild(labelRow);
+          mainValuesBody.appendChild(valuesRow);
+          totalLabelBody.appendChild(totalLabelRow);
+          totalValuesBody.appendChild(totalValuesRow);
         });
       });
     }
 
     items.forEach(item => appendGroup(item.name, item.id, branches, true));
-
     if (selectedBranchId && selectedBranch) {
-      appendGroup("合計", null, [{
-        name: selectedBranch.name + "合計",
-        id: selectedBranch.id,
-        isTotal: true
-      }], false);
+      appendGroup("合計", null, [{ name: selectedBranch.name + "合計", id: selectedBranch.id, isTotal: true }], false);
     } else {
-      appendGroup("合計", null, [
-        ...branches,
-        { name: "総合計", id: null, isTotal: true }
-      ], false);
+      appendGroup("合計", null, [...branches, { name: "総合計", id: null, isTotal: true }], false);
     }
 
-    grid.append(labelPane, valuesPane);
-    root.appendChild(grid);
     oldElement.replaceWith(root);
   }
 
