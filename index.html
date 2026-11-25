@@ -1361,6 +1361,117 @@
     padding: 3px 4px;
   }
 
+  /* 集計表を「項目ラベル」と「数値」の2つの独立した表に分割 */
+  .report-split-wrap {
+    width: 100%;
+    min-width: 0;
+    background: #fff;
+  }
+  .report-split-caption {
+    padding: 12px 14px;
+    color: var(--text);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+  }
+  .report-split-grid {
+    display: grid;
+    grid-template-columns: 400px minmax(0, 1fr);
+    align-items: start;
+    width: 100%;
+    min-width: 0;
+  }
+  .report-label-pane {
+    box-sizing: border-box;
+    width: 400px;
+    min-width: 400px;
+    overflow: hidden;
+  }
+  .report-values-pane {
+    min-width: 0;
+    border-left: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+  .report-split-wrap .inventory-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+  }
+  .report-label-table col.report-item-col { width: 250px; }
+  .report-label-table col.report-branch-col { width: 150px; }
+  .report-values-table {
+    width: auto !important;
+    table-layout: fixed;
+  }
+  .report-values-table th,
+  .report-values-table td {
+    min-width: 74px;
+    width: 74px;
+    padding: 15px 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .report-values-table th {
+    height: 54px;
+  }
+  .report-label-table th {
+    height: 54px;
+    text-align: center;
+  }
+  .report-label-table thead th[rowspan="2"] {
+    height: 108px;
+  }
+  .report-split-wrap .report-split-data-row {
+    height: 68px;
+  }
+  .report-split-wrap .report-split-data-row > td {
+    height: 68px;
+    box-sizing: border-box;
+    vertical-align: middle;
+  }
+  .report-split-wrap .report-label-table td {
+    padding: 16px 18px;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .report-split-wrap .report-label-table td:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .report-split-wrap .report-label-table .report-group-cell {
+    background: #f8fafb;
+  }
+  .report-split-wrap tr.report-extension-row td {
+    background: #fafbfd;
+  }
+  .report-split-wrap tr.report-total-row td {
+    background: #eef3f7;
+    font-weight: 700;
+  }
+  .report-values-table td {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+    font-variant-numeric: tabular-nums;
+  }
+  .report-values-table td * {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+  .report-values-table td::selection,
+  .report-values-table th::selection {
+    background: #b9d8f3;
+  }
+  @media (max-width: 900px) {
+    .report-split-grid { grid-template-columns: 300px minmax(0, 1fr); }
+    .report-label-pane { width: 300px; min-width: 300px; }
+    .report-label-table col.report-item-col { width: 180px; }
+    .report-label-table col.report-branch-col { width: 120px; }
+  }
+
 </style>
 </head>
 
@@ -1911,7 +2022,7 @@
 
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
-        シートサンプルの報告様式に合わせて表示します。Excelへ貼り付ける場合は、数値欄の先頭から必要な範囲をドラッグして選択し、Ctrl+Cでコピーしてください。対象者区分の14列（合計欄の手前）はC～P列に対応します。
+        左側の福祉用具・拠点／区分と、右側の数値を独立した表で表示します。Excelへ貼り付ける場合は、右側の数値表だけをドラッグして選択し、Ctrl+Cでコピーしてください。対象者区分の14列（合計欄の手前）はC～P列に対応します。
       </p>
 
       <button type="button" class="refresh-button" id="exportMonthlyPdf">
@@ -1971,7 +2082,7 @@
 
     <div class="panel" style="padding:16px;">
       <p style="color:var(--muted); margin-top:0;">
-        シートサンプルの報告様式に合わせて表示します。Excelへ貼り付ける場合は、数値欄の先頭から必要な範囲をドラッグして選択し、Ctrl+Cでコピーしてください。対象者区分の14列（合計欄の手前）はC～P列に対応します。
+        左側の福祉用具・拠点／区分と、右側の数値を独立した表で表示します。Excelへ貼り付ける場合は、右側の数値表だけをドラッグして選択し、Ctrl+Cでコピーしてください。対象者区分の14列（合計欄の手前）はC～P列に対応します。
       </p>
       <button type="button" class="refresh-button" id="exportAnnualPdf">
         <i data-lucide="file-down"></i>
@@ -4631,8 +4742,8 @@ if (isOverdue) {
   }
 
   function renderExcelReportTable(tableId, data, type) {
-    const oldTable = document.getElementById(tableId);
-    if (!oldTable) return;
+    const oldElement = document.getElementById(tableId);
+    if (!oldElement) return;
 
     const isMonthly = type === "monthly";
     const allBranches = Array.isArray(data.branches) ? data.branches : [];
@@ -4644,85 +4755,125 @@ if (isOverdue) {
     const branches = selectedBranchId
       ? allBranches.filter(branch => branch.id === selectedBranchId)
       : allBranches;
+    const selectedBranch = branches[0] || null;
     const mainIndex = buildReportIndex(
       isMonthly ? (data.monthly || []) : (data.annual || [])
     );
     const cumulativeIndex = isMonthly ? buildReportIndex(data.cumulative || []) : null;
 
-    const table = document.createElement("table");
-    table.id = tableId;
-    table.className = "inventory-table";
-    table.style.minWidth = "1800px";
+    const root = document.createElement("div");
+    root.id = tableId;
+    root.className = "report-split-wrap";
 
-    const caption = document.createElement("caption");
+    const caption = document.createElement("div");
+    caption.className = "report-split-caption";
     caption.textContent = "令和" + (data.fiscalYear - 2018) + "年度 福祉用具無料貸出事業" +
       (isMonthly ? " " + data.month + "月分" : " 年度集計");
-    caption.style.padding = "12px";
-    caption.style.fontWeight = "700";
-    caption.style.textAlign = "left";
-    table.appendChild(caption);
+    root.appendChild(caption);
 
-    const thead = document.createElement("thead");
-    const topRow = document.createElement("tr");
+    const grid = document.createElement("div");
+    grid.className = "report-split-grid";
+
+    const labelPane = document.createElement("div");
+    labelPane.className = "report-label-pane";
+    const labelTable = document.createElement("table");
+    labelTable.className = "inventory-table report-label-table";
+    labelTable.setAttribute("aria-label", "福祉用具・拠点／区分");
+    const labelCols = document.createElement("colgroup");
+    const itemCol = document.createElement("col");
+    itemCol.className = "report-item-col";
+    const branchCol = document.createElement("col");
+    branchCol.className = "report-branch-col";
+    labelCols.append(itemCol, branchCol);
+    labelTable.appendChild(labelCols);
+
+    const labelHead = document.createElement("thead");
+    const labelHeadRow = document.createElement("tr");
     ["福祉用具", "拠点／区分"].forEach(label => {
       const th = document.createElement("th");
       th.textContent = label;
       th.rowSpan = 2;
-      topRow.appendChild(th);
+      labelHeadRow.appendChild(th);
     });
+    labelHead.appendChild(labelHeadRow);
+    const labelSubHead = document.createElement("tr");
+    labelHead.appendChild(labelSubHead);
+    labelTable.appendChild(labelHead);
+    const labelBody = document.createElement("tbody");
+    labelTable.appendChild(labelBody);
+    labelPane.appendChild(labelTable);
+
+    const valuesPane = document.createElement("div");
+    valuesPane.className = "report-values-pane";
+    const valuesTable = document.createElement("table");
+    valuesTable.className = "inventory-table report-values-table";
+    valuesTable.setAttribute("aria-label", "対象者区分別の件数・貸出点数・合計");
+    const numericColumnCount = categories.length * 2 + 2 + (isMonthly ? 2 : 0);
+    valuesTable.style.minWidth = (numericColumnCount * 74) + "px";
+
+    const valuesHead = document.createElement("thead");
+    const valuesHeadRow = document.createElement("tr");
     categories.forEach(category => {
       const th = document.createElement("th");
       th.colSpan = 2;
       th.textContent = category.name;
-      topRow.appendChild(th);
+      valuesHeadRow.appendChild(th);
     });
     const totalHead = document.createElement("th");
     totalHead.colSpan = 2;
     totalHead.textContent = "合計";
-    topRow.appendChild(totalHead);
+    valuesHeadRow.appendChild(totalHead);
     if (isMonthly) {
       const cumulativeHead = document.createElement("th");
       cumulativeHead.colSpan = 2;
       cumulativeHead.textContent = "年度累計";
-      topRow.appendChild(cumulativeHead);
+      valuesHeadRow.appendChild(cumulativeHead);
     }
-    thead.appendChild(topRow);
+    valuesHead.appendChild(valuesHeadRow);
 
-    const subRow = document.createElement("tr");
+    const valuesSubHeadRow = document.createElement("tr");
     for (let i = 0; i < categories.length + 1 + (isMonthly ? 1 : 0); i++) {
       ["件数", "貸出点数"].forEach(label => {
         const th = document.createElement("th");
         th.textContent = label;
-        subRow.appendChild(th);
+        valuesSubHeadRow.appendChild(th);
       });
     }
-    thead.appendChild(subRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
+    valuesHead.appendChild(valuesSubHeadRow);
+    valuesTable.appendChild(valuesHead);
+    const valuesBody = document.createElement("tbody");
+    valuesTable.appendChild(valuesBody);
+    valuesPane.appendChild(valuesTable);
 
     function appendGroup(itemName, itemId, branchEntries, includeItemTotal) {
       const entries = branchEntries.slice();
-      if (includeItemTotal) entries.push({ name: "合計", id: null, isTotal: true });
+      if (includeItemTotal) {
+        entries.push({ name: "合計", id: null, isTotal: true });
+      }
       if (!entries.length) return;
-      const groupRows = entries.length * 2;
+      const groupRowCount = entries.length * 2;
 
       entries.forEach((branch, branchIndex) => {
         [false, true].forEach((isExtension, kindIndex) => {
-          const tr = document.createElement("tr");
-          const isTotal = !!branch.isTotal || /合計/.test(branch.name || "");
-          if (isExtension) tr.style.background = "#fafbfd";
-          if (isTotal) {
-            tr.style.fontWeight = "700";
-            tr.style.background = "#eef3f7";
+          const labelRow = document.createElement("tr");
+          const valuesRow = document.createElement("tr");
+          labelRow.className = "report-split-data-row";
+          valuesRow.className = "report-split-data-row";
+          if (isExtension) {
+            labelRow.classList.add("report-extension-row");
+            valuesRow.classList.add("report-extension-row");
+          }
+          if (branch.isTotal || /合計/.test(branch.name || "")) {
+            labelRow.classList.add("report-total-row");
+            valuesRow.classList.add("report-total-row");
           }
 
           if (branchIndex === 0 && kindIndex === 0) {
             const itemCell = document.createElement("td");
             itemCell.textContent = itemName;
-            itemCell.rowSpan = groupRows;
+            itemCell.rowSpan = groupRowCount;
             itemCell.className = "report-group-cell";
-            tr.appendChild(itemCell);
+            labelRow.appendChild(itemCell);
           }
 
           const branchCell = document.createElement("td");
@@ -4730,7 +4881,7 @@ if (isOverdue) {
             ? (branch.name === "合計" ? "延長合計" : branch.name === "総合計" ? "延長総合計" : "延長")
             : branch.name;
           branchCell.className = "report-group-cell";
-          tr.appendChild(branchCell);
+          labelRow.appendChild(branchCell);
 
           let totalCount = 0;
           let totalPoints = 0;
@@ -4742,43 +4893,58 @@ if (isOverdue) {
             totalCount += value.count;
             totalPoints += value.points;
             const countCell = document.createElement("td");
-            countCell.textContent = value.count;
-            tr.appendChild(countCell);
+            countCell.textContent = String(Number(value.count) || 0);
+            valuesRow.appendChild(countCell);
             const pointsCell = document.createElement("td");
-            pointsCell.textContent = value.points;
-            tr.appendChild(pointsCell);
+            pointsCell.textContent = String(Number(value.points) || 0);
+            valuesRow.appendChild(pointsCell);
 
             if (isMonthly) {
-              const cumulative = getReportValues(cumulativeIndex, itemId, branch.id, category.id, isExtension);
+              const cumulative = getReportValues(
+                cumulativeIndex, itemId, branch.id, category.id, isExtension
+              );
               cumulativeCount += cumulative.count;
               cumulativePoints += cumulative.points;
             }
           });
 
           [totalCount, totalPoints].forEach(value => {
-            tr.appendChild(createReportNumberCell(value));
+            const cell = document.createElement("td");
+            cell.textContent = String(Number(value) || 0);
+            valuesRow.appendChild(cell);
           });
           if (isMonthly) {
             [cumulativeCount, cumulativePoints].forEach(value => {
-              tr.appendChild(createReportNumberCell(value));
+              const cell = document.createElement("td");
+              cell.textContent = String(Number(value) || 0);
+              valuesRow.appendChild(cell);
             });
           }
-          tbody.appendChild(tr);
+
+          labelBody.appendChild(labelRow);
+          valuesBody.appendChild(valuesRow);
         });
       });
     }
 
     items.forEach(item => appendGroup(item.name, item.id, branches, true));
 
-    if (selectedBranchId && branches[0]) {
-      appendGroup("合計", null, [{ name: branches[0].name + "合計", id: branches[0].id, isTotal: true }], false);
+    if (selectedBranchId && selectedBranch) {
+      appendGroup("合計", null, [{
+        name: selectedBranch.name + "合計",
+        id: selectedBranch.id,
+        isTotal: true
+      }], false);
     } else {
-      appendGroup("合計", null, [...branches, { name: "総合計", id: null, isTotal: true }], false);
+      appendGroup("合計", null, [
+        ...branches,
+        { name: "総合計", id: null, isTotal: true }
+      ], false);
     }
 
-    table.appendChild(tbody);
-    oldTable.replaceWith(table);
-
+    grid.append(labelPane, valuesPane);
+    root.appendChild(grid);
+    oldElement.replaceWith(root);
   }
 
   // Excel報告様式の列見出しを、コピー対象外の説明として表示する。
