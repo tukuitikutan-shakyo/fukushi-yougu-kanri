@@ -4,8 +4,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#ffffff">
-  <title>福祉用具貸出管理システム</title>
+<meta name="theme-color" content="#285777">
+<title>福祉用具貸出管理システム</title>
+
+<!-- ホーム画面・ブラウザ用アイコン -->
+<link rel="apple-touch-icon" sizes="180x180"
+      href="./apple-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="192x192"
+      href="./icon-192.png?v=1">
 
   <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js" defer></script>
 
@@ -1735,7 +1741,7 @@
       </div>
 
       <div class="loan-submit-row sticky-register-row">
-        <span class="loan-help">整備が必要な物品は、利用可能数に戻さず整備中として登録します。</span>
+        <span class="loan-help">※整備が必要にすると、故障中になります</span>
         <button type="button" class="loan-submit-button" id="registerReturnButton" disabled>
           <i data-lucide="clipboard-check"></i>
           返却を登録
@@ -1801,7 +1807,7 @@
       </div>
 
       <div class="loan-submit-row sticky-register-row">
-        <span class="loan-help">受付1件に複数の福祉用具をまとめて登録します。</span>
+        <span class="loan-help">延長する日付をもう一度確認！</span>
         <button type="button" class="loan-submit-button" id="registerExtensionButton" disabled>
           <i data-lucide="calendar-clock"></i>
           延長を登録
